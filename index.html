@@ -1517,5 +1517,420 @@ function build(id,p){
 })();
 </script>
 
+<!-- EMERALD WORLD TOOLS — BATCH 7: TOOLS 31–35 -->
+<style>
+.ew7-wrap{color:#e8fff0;margin:24px 0;font-family:inherit}
+.ew7-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr));gap:14px}
+.ew7-card{display:block;width:100%;box-sizing:border-box;text-align:left;background:linear-gradient(145deg,#10291f,#0a1712);color:#edfff4;border:1px solid #28543d;border-radius:16px;padding:19px;cursor:pointer;transition:.2s}
+.ew7-card:hover{border-color:#4ade80;transform:translateY(-3px)}
+.ew7-icon{font-size:28px;display:block;margin-bottom:12px}
+.ew7-card strong{display:block;font-size:16px;margin-bottom:7px}
+.ew7-card small{display:block;color:#aacbb7;line-height:1.5}
+.ew7-panel{display:none;background:#0b1812;border:1px solid #28543d;border-radius:18px;padding:clamp(16px,3vw,26px);margin-top:20px;color:#e8fff0}
+.ew7-panel h2{color:#86efac;margin-top:0}
+.ew7-panel label{display:block;margin:14px 0 7px;color:#c8ead5}
+.ew7-panel input:not([type=checkbox]),.ew7-panel select,.ew7-panel textarea{box-sizing:border-box;width:100%;max-width:100%;background:#10251b;color:#effff4;border:1px solid #315b43;border-radius:9px;padding:11px;font:inherit}
+.ew7-panel input[type=checkbox]{width:auto}
+.ew7-panel textarea{min-height:100px;resize:vertical}
+.ew7-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:12px}
+.ew7-actions{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0}
+.ew7-btn{background:#22c55e;color:#062513;border:0;border-radius:9px;padding:11px 15px;font-weight:750;cursor:pointer}
+.ew7-btn:hover{filter:brightness(1.1)}
+.ew7-btn:disabled{opacity:.45;cursor:not-allowed}
+.ew7-secondary{background:#193a29;color:#e8fff0;border:1px solid #35664a}
+.ew7-output{background:#10251b;border:1px solid #315b43;border-radius:10px;padding:14px;margin-top:12px;overflow-wrap:anywhere}
+.ew7-muted{color:#a8c6b5;font-size:13px;line-height:1.6}
+.ew7-stat{font-size:clamp(25px,5vw,36px);font-weight:800;color:#86efac}
+.ew7-preview{display:block;max-width:100%;max-height:340px;object-fit:contain;margin:12px auto;border-radius:8px}
+.ew7-close{float:right}
+.ew7-canvasbox{overflow:auto;background:#08120d;border:1px solid #315b43;border-radius:10px;padding:8px;margin-top:12px}
+.ew7-canvasbox canvas{display:block;max-width:100%;height:auto;margin:auto}
+.ew7-meter{height:7px;background:#19382a;border-radius:10px;overflow:hidden;margin:10px 0}
+.ew7-meter span{display:block;height:100%;width:0;background:#4ade80}
+@media(max-width:520px){.ew7-card{padding:15px}.ew7-panel{padding:15px}}
+</style>
+
+<script>
+(function(){
+"use strict";
+if(document.getElementById("ew7-tools"))return;
+const grid=document.getElementById("grid");
+const about=document.getElementById("about");
+if(!grid||!about){console.warn("Emerald World: expected #grid and #about elements were not found.");return;}
+
+const tools=[
+{icon:"🖼️",name:"Image Resizer",desc:"Resize images to custom dimensions.",id:"resize"},
+{icon:"📦",name:"Image Compressor",desc:"Reduce image file size in your browser.",id:"compress"},
+{icon:"✂️",name:"Image Cropper",desc:"Crop images using custom coordinates.",id:"crop"},
+{icon:"01",name:"Binary Text Converter",desc:"Convert text to binary and back.",id:"binary"},
+{icon:"🍅",name:"Pomodoro Study Timer",desc:"Focus sessions and refreshing breaks.",id:"pomodoro"}
+];
+
+const wrap=document.createElement("section");
+wrap.id="ew7-tools";
+wrap.className="ew7-wrap";
+wrap.innerHTML="<h2 style='margin-bottom:8px'>More Free Tools</h2><p class='ew7-muted'>Five new browser-powered tools from Emerald World.</p>";
+const cards=document.createElement("div");
+cards.className="ew7-grid";
+tools.forEach(t=>{
+ const b=document.createElement("button");
+ b.type="button";b.className="ew7-card";
+ b.innerHTML="<span class='ew7-icon'>"+t.icon+"</span><strong>"+t.name+"</strong><small>"+t.desc+"</small>";
+ b.addEventListener("click",()=>show(t.id));
+ cards.appendChild(b);
+});
+wrap.appendChild(cards);
+const panels=document.createElement("div");
+panels.id="ew7-panels";
+panels.innerHTML=`
+<section class="ew7-panel" id="ew7-resize">
+<button class="ew7-btn ew7-secondary ew7-close" data-ew7-close>← Back</button>
+<h2>🖼️ Image Resizer</h2>
+<p class="ew7-muted">Resize JPG, PNG, WebP, and other browser-supported images. Processing stays on your device.</p>
+<label for="ew7-resize-file">Choose image</label><input id="ew7-resize-file" type="file" accept="image/*">
+<div id="ew7-resize-controls" hidden>
+<div class="ew7-row">
+<div><label for="ew7-rw">Width (px)</label><input id="ew7-rw" type="number" min="1" max="10000" value="800"></div>
+<div><label for="ew7-rh">Height (px)</label><input id="ew7-rh" type="number" min="1" max="10000" value="600"></div>
+</div>
+<label><input type="checkbox" id="ew7-ratio" checked> Keep original aspect ratio</label>
+<label for="ew7-rformat">Output format</label><select id="ew7-rformat"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select>
+<div class="ew7-actions"><button class="ew7-btn" id="ew7-resize-go">Resize Image</button><button class="ew7-btn ew7-secondary" id="ew7-resize-download" disabled>Download Image</button></div>
+<img id="ew7-resize-preview" class="ew7-preview" alt="Resized image preview" hidden>
+<p id="ew7-resize-status" class="ew7-muted" aria-live="polite"></p>
+</div>
+</section>
+
+<section class="ew7-panel" id="ew7-compress">
+<button class="ew7-btn ew7-secondary ew7-close" data-ew7-close>← Back</button>
+<h2>📦 Image Compressor</h2>
+<p class="ew7-muted">Compress images locally. JPEG and WebP usually give smaller files; PNG may not shrink much.</p>
+<label for="ew7-comp-file">Choose image</label><input id="ew7-comp-file" type="file" accept="image/*">
+<div id="ew7-comp-controls" hidden>
+<label for="ew7-quality">Image quality: <span id="ew7-quality-label">75%</span></label><input id="ew7-quality" type="range" min="10" max="100" value="75">
+<label for="ew7-cformat">Output format</label><select id="ew7-cformat"><option value="image/webp">WebP — recommended</option><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option></select>
+<div class="ew7-actions"><button class="ew7-btn" id="ew7-comp-go">Compress Image</button><button class="ew7-btn ew7-secondary" id="ew7-comp-download" disabled>Download Compressed Image</button></div>
+<div class="ew7-row"><div class="ew7-output"><div class="ew7-muted">Original size</div><div class="ew7-stat" id="ew7-original-size">—</div></div><div class="ew7-output"><div class="ew7-muted">New size</div><div class="ew7-stat" id="ew7-new-size">—</div></div></div>
+<div class="ew7-output" id="ew7-comp-result" aria-live="polite">Your compression result will appear here.</div>
+<img id="ew7-comp-preview" class="ew7-preview" alt="Compressed image preview" hidden>
+<p class="ew7-muted">Transparency may be lost when converting an image to JPEG.</p>
+</div>
+</section>
+
+<section class="ew7-panel" id="ew7-crop">
+<button class="ew7-btn ew7-secondary ew7-close" data-ew7-close>← Back</button>
+<h2>✂️ Image Cropper</h2>
+<p class="ew7-muted">Choose a source image, then specify the crop rectangle in pixels from its top-left corner.</p>
+<label for="ew7-crop-file">Choose image</label><input id="ew7-crop-file" type="file" accept="image/*">
+<div id="ew7-crop-controls" hidden>
+<img id="ew7-crop-source" class="ew7-preview" alt="Original image for cropping">
+<div class="ew7-row">
+<div><label for="ew7-cx">X position</label><input id="ew7-cx" type="number" min="0" value="0"></div>
+<div><label for="ew7-cy">Y position</label><input id="ew7-cy" type="number" min="0" value="0"></div>
+<div><label for="ew7-cw">Crop width</label><input id="ew7-cw" type="number" min="1" value="300"></div>
+<div><label for="ew7-ch">Crop height</label><input id="ew7-ch" type="number" min="1" value="300"></div>
+</div>
+<p class="ew7-muted" id="ew7-crop-dimensions"></p>
+<label for="ew7-cformat-out">Output format</label><select id="ew7-cformat-out"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select>
+<div class="ew7-actions"><button class="ew7-btn" id="ew7-crop-go">Crop Image</button><button class="ew7-btn ew7-secondary" id="ew7-crop-download" disabled>Download Crop</button></div>
+<div class="ew7-canvasbox"><canvas id="ew7-crop-canvas" hidden></canvas></div>
+<p id="ew7-crop-status" class="ew7-muted" aria-live="polite"></p>
+</div>
+</section>
+
+<section class="ew7-panel" id="ew7-binary">
+<button class="ew7-btn ew7-secondary ew7-close" data-ew7-close>← Back</button>
+<h2>01 Binary Text Converter</h2>
+<p class="ew7-muted">Convert ordinary UTF-8 text into binary bytes, or decode binary back into text. Separate bytes with spaces.</p>
+<label for="ew7-binary-input">Input</label><textarea id="ew7-binary-input" placeholder="Type text here, or binary like 01001000 01101001"></textarea>
+<label for="ew7-binary-mode">Conversion mode</label><select id="ew7-binary-mode"><option value="encode">Text → Binary</option><option value="decode">Binary → Text</option></select>
+<div class="ew7-actions"><button class="ew7-btn" id="ew7-binary-go">Convert</button><button class="ew7-btn ew7-secondary" id="ew7-binary-copy">Copy Result</button><button class="ew7-btn ew7-secondary" id="ew7-binary-swap">Use Result as Input</button></div>
+<label for="ew7-binary-output">Result</label><textarea id="ew7-binary-output" readonly placeholder="Your result will appear here"></textarea>
+<p id="ew7-binary-status" class="ew7-muted" aria-live="polite"></p>
+</section>
+
+<section class="ew7-panel" id="ew7-pomodoro">
+<button class="ew7-btn ew7-secondary ew7-close" data-ew7-close>← Back</button>
+<h2>🍅 Pomodoro Study Timer</h2>
+<p class="ew7-muted">Focus on one task at a time. Customize your work and break durations.</p>
+<div class="ew7-row">
+<div><label for="ew7-work-min">Focus minutes</label><input id="ew7-work-min" type="number" min="1" max="180" value="25"></div>
+<div><label for="ew7-break-min">Short break</label><input id="ew7-break-min" type="number" min="1" max="60" value="5"></div>
+<div><label for="ew7-long-min">Long break</label><input id="ew7-long-min" type="number" min="1" max="120" value="15"></div>
+</div>
+<div class="ew7-output" style="text-align:center;padding:22px">
+<div id="ew7-pomo-phase" class="ew7-muted">Ready to focus?</div>
+<div id="ew7-pomo-display" class="ew7-stat" style="font-size:clamp(42px,10vw,64px);font-variant-numeric:tabular-nums">25:00</div>
+<div class="ew7-meter"><span id="ew7-pomo-progress"></span></div>
+<div id="ew7-pomo-status" class="ew7-muted" aria-live="polite">Sessions completed: 0</div>
+</div>
+<div class="ew7-actions"><button class="ew7-btn" id="ew7-pomo-start">Start Focus</button><button class="ew7-btn ew7-secondary" id="ew7-pomo-reset">Reset</button><button class="ew7-btn ew7-secondary" id="ew7-pomo-skip">Skip Session</button></div>
+<p class="ew7-muted">The timer continues while this page stays open. Keep this tab open during your session.</p>
+</section>`;
+wrap.appendChild(panels);
+grid.appendChild(wrap);
+
+function show(id){
+ panels.querySelectorAll(".ew7-panel").forEach(p=>p.style.display="none");
+ const panel=document.getElementById("ew7-"+id);
+ if(panel){panel.style.display="block";panel.scrollIntoView({behavior:"smooth",block:"start"});}
+}
+panels.querySelectorAll("[data-ew7-close]").forEach(b=>b.addEventListener("click",()=>{
+ b.closest(".ew7-panel").style.display="none";
+ grid.scrollIntoView({behavior:"smooth",block:"start"});
+}));
+
+function loadImage(file,callback,errorCallback){
+ if(!file||!file.type.startsWith("image/")){errorCallback("Please choose a valid image file.");return;}
+ const url=URL.createObjectURL(file);
+ const img=new Image();
+ img.onload=()=>callback(img,url);
+ img.onerror=()=>{URL.revokeObjectURL(url);errorCallback("This image could not be opened by your browser.");};
+ img.src=url;
+}
+function fmtBytes(n){
+ if(!Number.isFinite(n))return "—";
+ if(n<1024)return n+" B";
+ if(n<1024*1024)return (n/1024).toFixed(1)+" KB";
+ return (n/(1024*1024)).toFixed(2)+" MB";
+}
+function canvasBlob(canvas,type,quality,callback){
+ canvas.toBlob(blob=>callback(blob),type,quality);
+}
+
+// 31. Image Resizer
+let resizeImage=null,resizeUrl=null,resizeBlob=null;
+const rfile=document.getElementById("ew7-resize-file");
+rfile.addEventListener("change",()=>{
+ if(resizeUrl)URL.revokeObjectURL(resizeUrl);
+ resizeImage=null;resizeBlob=null;
+ document.getElementById("ew7-resize-download").disabled=true;
+ document.getElementById("ew7-resize-preview").hidden=true;
+ const file=rfile.files[0];if(!file)return;
+ loadImage(file,(img,url)=>{
+  resizeImage=img;resizeUrl=url;
+  document.getElementById("ew7-resize-controls").hidden=false;
+  document.getElementById("ew7-rw").value=img.naturalWidth;
+  document.getElementById("ew7-rh").value=img.naturalHeight;
+  document.getElementById("ew7-resize-status").textContent="Original dimensions: "+img.naturalWidth+" × "+img.naturalHeight+" px.";
+ },msg=>document.getElementById("ew7-resize-status").textContent=msg);
+});
+document.getElementById("ew7-rw").addEventListener("input",()=>{
+ if(!resizeImage||!document.getElementById("ew7-ratio").checked)return;
+ const w=Number(document.getElementById("ew7-rw").value);
+ if(w>0)document.getElementById("ew7-rh").value=Math.max(1,Math.round(w*resizeImage.naturalHeight/resizeImage.naturalWidth));
+});
+document.getElementById("ew7-rh").addEventListener("input",()=>{
+ if(!resizeImage||!document.getElementById("ew7-ratio").checked)return;
+ const h=Number(document.getElementById("ew7-rh").value);
+ if(h>0)document.getElementById("ew7-rw").value=Math.max(1,Math.round(h*resizeImage.naturalWidth/resizeImage.naturalHeight));
+});
+document.getElementById("ew7-resize-go").addEventListener("click",()=>{
+ const status=document.getElementById("ew7-resize-status");
+ if(!resizeImage){status.textContent="Choose an image first.";return;}
+ const w=Number(document.getElementById("ew7-rw").value),h=Number(document.getElementById("ew7-rh").value);
+ if(!Number.isInteger(w)||!Number.isInteger(h)||w<1||h<1||w>10000||h>10000||w*h>40000000){status.textContent="Use valid dimensions up to 10,000 px and 40 million total pixels.";return;}
+ const c=document.createElement("canvas");c.width=w;c.height=h;
+ c.getContext("2d").drawImage(resizeImage,0,0,w,h);
+ const type=document.getElementById("ew7-rformat").value;
+ canvasBlob(c,type,.92,blob=>{
+  if(!blob){status.textContent="This output format is not supported.";return;}
+  resizeBlob=blob;
+  const url=URL.createObjectURL(blob),preview=document.getElementById("ew7-resize-preview");
+  preview.src=url;preview.hidden=false;
+  document.getElementById("ew7-resize-download").disabled=false;
+  status.textContent="Done: "+w+" × "+h+" px · "+fmtBytes(blob.size);
+ });
+});
+document.getElementById("ew7-resize-download").addEventListener("click",()=>{
+ if(!resizeBlob)return;
+ const url=URL.createObjectURL(resizeBlob),a=document.createElement("a");
+ a.href=url;a.download="emerald-resized."+({ "image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[resizeBlob.type]||"png");
+ a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
+// 32. Image Compressor
+let compImage=null,compUrl=null,compBlob=null;
+const compFile=document.getElementById("ew7-comp-file");
+compFile.addEventListener("change",()=>{
+ compBlob=null;document.getElementById("ew7-comp-download").disabled=true;
+ document.getElementById("ew7-comp-preview").hidden=true;
+ const file=compFile.files[0];if(!file)return;
+ loadImage(file,(img,url)=>{
+  if(compUrl)URL.revokeObjectURL(compUrl);
+  compImage=img;compUrl=url;
+  document.getElementById("ew7-comp-controls").hidden=false;
+  document.getElementById("ew7-original-size").textContent=fmtBytes(file.size);
+  document.getElementById("ew7-new-size").textContent="—";
+  document.getElementById("ew7-comp-result").textContent="Image loaded: "+img.naturalWidth+" × "+img.naturalHeight+" px.";
+ },msg=>document.getElementById("ew7-comp-result").textContent=msg);
+});
+document.getElementById("ew7-quality").addEventListener("input",e=>document.getElementById("ew7-quality-label").textContent=e.target.value+"%");
+document.getElementById("ew7-comp-go").addEventListener("click",()=>{
+ if(!compImage)return;
+ const type=document.getElementById("ew7-cformat").value;
+ const c=document.createElement("canvas");c.width=compImage.naturalWidth;c.height=compImage.naturalHeight;
+ c.getContext("2d").drawImage(compImage,0,0);
+ const quality=Number(document.getElementById("ew7-quality").value)/100;
+ canvasBlob(c,type,quality,blob=>{
+  if(!blob){document.getElementById("ew7-comp-result").textContent="Compression failed. Try another output format.";return;}
+  compBlob=blob;
+  const original=compFile.files[0].size,delta=original?((original-blob.size)/original*100):0;
+  document.getElementById("ew7-new-size").textContent=fmtBytes(blob.size);
+  document.getElementById("ew7-comp-result").textContent=blob.size<original?
+   "Reduced by "+delta.toFixed(1)+"% ("+fmtBytes(original-blob.size)+" saved).":
+   "The result is not smaller than the original. Try a lower quality setting or a different format.";
+  const preview=document.getElementById("ew7-comp-preview");
+  preview.src=URL.createObjectURL(blob);preview.hidden=false;
+  document.getElementById("ew7-comp-download").disabled=false;
+ });
+});
+document.getElementById("ew7-comp-download").addEventListener("click",()=>{
+ if(!compBlob)return;
+ const url=URL.createObjectURL(compBlob),a=document.createElement("a");
+ a.href=url;a.download="emerald-compressed."+({"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[compBlob.type]||"png");
+ a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
+// 33. Image Cropper
+let cropImage=null,cropUrl=null,cropBlob=null;
+const cropFile=document.getElementById("ew7-crop-file");
+cropFile.addEventListener("change",()=>{
+ cropBlob=null;document.getElementById("ew7-crop-download").disabled=true;
+ document.getElementById("ew7-crop-canvas").hidden=true;
+ const file=cropFile.files[0];if(!file)return;
+ loadImage(file,(img,url)=>{
+  if(cropUrl)URL.revokeObjectURL(cropUrl);
+  cropImage=img;cropUrl=url;
+  document.getElementById("ew7-crop-controls").hidden=false;
+  document.getElementById("ew7-crop-source").src=url;
+  document.getElementById("ew7-crop-dimensions").textContent="Image size: "+img.naturalWidth+" × "+img.naturalHeight+" px.";
+  document.getElementById("ew7-cx").value=0;
+  document.getElementById("ew7-cy").value=0;
+  document.getElementById("ew7-cw").value=img.naturalWidth;
+  document.getElementById("ew7-ch").value=img.naturalHeight;
+  document.getElementById("ew7-crop-status").textContent="Set the crop rectangle and click Crop Image.";
+ },msg=>document.getElementById("ew7-crop-status").textContent=msg);
+});
+document.getElementById("ew7-crop-go").addEventListener("click",()=>{
+ if(!cropImage)return;
+ const x=Number(document.getElementById("ew7-cx").value),y=Number(document.getElementById("ew7-cy").value);
+ const w=Number(document.getElementById("ew7-cw").value),h=Number(document.getElementById("ew7-ch").value);
+ if(![x,y,w,h].every(Number.isInteger)||x<0||y<0||w<1||h<1||x+w>cropImage.naturalWidth||y+h>cropImage.naturalHeight||w*h>40000000){
+  document.getElementById("ew7-crop-status").textContent="Invalid crop area. Keep the rectangle inside the image and under 40 million pixels.";return;
+ }
+ const c=document.getElementById("ew7-crop-canvas");c.width=w;c.height=h;
+ c.getContext("2d").drawImage(cropImage,x,y,w,h,0,0,w,h);c.hidden=false;
+ canvasBlob(c,document.getElementById("ew7-cformat-out").value,.92,blob=>{
+  if(!blob){document.getElementById("ew7-crop-status").textContent="Could not export this crop.";return;}
+  cropBlob=blob;document.getElementById("ew7-crop-download").disabled=false;
+  document.getElementById("ew7-crop-status").textContent="Crop ready: "+w+" × "+h+" px · "+fmtBytes(blob.size);
+ });
+});
+document.getElementById("ew7-crop-download").addEventListener("click",()=>{
+ if(!cropBlob)return;
+ const url=URL.createObjectURL(cropBlob),a=document.createElement("a");
+ a.href=url;a.download="emerald-crop."+({"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[cropBlob.type]||"png");
+ a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
+// 34. Binary Text Converter (UTF-8 bytes)
+const binInput=document.getElementById("ew7-binary-input"),binOutput=document.getElementById("ew7-binary-output");
+document.getElementById("ew7-binary-go").addEventListener("click",()=>{
+ const mode=document.getElementById("ew7-binary-mode").value,input=binInput.value;
+ try{
+  if(mode==="encode"){
+   binOutput.value=Array.from(new TextEncoder().encode(input),b=>b.toString(2).padStart(8,"0")).join(" ");
+  }else{
+   const cleaned=input.trim();
+   if(!cleaned){binOutput.value="";document.getElementById("ew7-binary-status").textContent="Enter binary bytes to decode.";return;}
+   const chunks=cleaned.split(/[\s,]+/);
+   if(chunks.some(x=>!/^[01]{1,8}$/.test(x)))throw Error("Use binary bytes containing only 0 and 1, separated by spaces.");
+   const bytes=chunks.map(x=>parseInt(x,2));
+   binOutput.value=new TextDecoder("utf-8",{fatal:true}).decode(new Uint8Array(bytes));
+  }
+  document.getElementById("ew7-binary-status").textContent="Conversion completed.";
+ }catch(e){document.getElementById("ew7-binary-status").textContent=e.message||"Could not convert this input.";binOutput.value="";}
+});
+document.getElementById("ew7-binary-copy").addEventListener("click",async()=>{
+ const status=document.getElementById("ew7-binary-status");
+ try{await navigator.clipboard.writeText(binOutput.value);status.textContent="Result copied!";}
+ catch(e){binOutput.focus();binOutput.select();status.textContent="Select the result and press Ctrl+C.";}
+});
+document.getElementById("ew7-binary-swap").addEventListener("click",()=>{
+ binInput.value=binOutput.value;
+ document.getElementById("ew7-binary-mode").value=document.getElementById("ew7-binary-mode").value==="encode"?"decode":"encode";
+ document.getElementById("ew7-binary-status").textContent="Input updated. Click Convert.";
+});
+
+// 35. Pomodoro Timer
+let phase="work",running=false,deadline=0,remaining=25*60*1000,completed=0,interval=null;
+const pDisplay=document.getElementById("ew7-pomo-display"),pPhase=document.getElementById("ew7-pomo-phase"),pStatus=document.getElementById("ew7-pomo-status"),pProgress=document.getElementById("ew7-pomo-progress");
+function minutesFor(p){
+ const id=p==="work"?"ew7-work-min":p==="short"?"ew7-break-min":"ew7-long-min";
+ const max=p==="work"?180:p==="short"?60:120;
+ return Math.max(1,Math.min(max,Number(document.getElementById(id).value)||1))*60000;
+}
+function phaseLabel(){return phase==="work"?"Focus session":phase==="short"?"Short break":"Long break";}
+function displayTime(ms){
+ ms=Math.max(0,ms);
+ const s=Math.ceil(ms/1000);
+ return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+}
+function drawPomo(){
+ const total=minutesFor(phase);
+ const left=running?Math.max(0,deadline-Date.now()):remaining;
+ pDisplay.textContent=displayTime(left);
+ pPhase.textContent=phaseLabel();
+ pProgress.style.width=Math.max(0,Math.min(100,(1-left/total)*100))+"%";
+ pStatus.textContent="Sessions completed: "+completed;
+}
+function switchPhase(next){
+ phase=next;remaining=minutesFor(phase);running=false;clearInterval(interval);
+ document.getElementById("ew7-pomo-start").textContent=phase==="work"?"Start Focus":"Start Break";
+ drawPomo();
+}
+function tickPomo(){
+ const left=deadline-Date.now();
+ if(left<=0){
+  if(phase==="work"){completed++;switchPhase(completed%4===0?"long":"short");}
+  else switchPhase("work");
+  pStatus.textContent=phaseLabel()+" finished. Sessions completed: "+completed;
+  document.getElementById("ew7-pomo-start").textContent=phase==="work"?"Start Focus":"Start Break";
+  return;
+ }
+ drawPomo();
+}
+document.getElementById("ew7-pomo-start").addEventListener("click",()=>{
+ if(running){
+  remaining=Math.max(0,deadline-Date.now());running=false;clearInterval(interval);
+  document.getElementById("ew7-pomo-start").textContent="Resume";drawPomo();return;
+ }
+ if(remaining<=0)remaining=minutesFor(phase);
+ deadline=Date.now()+remaining;running=true;
+ document.getElementById("ew7-pomo-start").textContent="Pause";
+ clearInterval(interval);interval=setInterval(tickPomo,200);drawPomo();
+});
+document.getElementById("ew7-pomo-reset").addEventListener("click",()=>{
+ running=false;clearInterval(interval);remaining=minutesFor(phase);
+ document.getElementById("ew7-pomo-start").textContent=phase==="work"?"Start Focus":"Start Break";
+ drawPomo();
+});
+document.getElementById("ew7-pomo-skip").addEventListener("click",()=>{
+ if(phase==="work"){completed++;switchPhase(completed%4===0?"long":"short");}
+ else switchPhase("work");
+ document.getElementById("ew7-pomo-start").textContent=phase==="work"?"Start Focus":"Start Break";
+ drawPomo();
+});
+["ew7-work-min","ew7-break-min","ew7-long-min"].forEach(id=>{
+ document.getElementById(id).addEventListener("change",()=>{
+  if(!running){remaining=minutesFor(phase);drawPomo();}
+ });
+});
+drawPomo();
+})();
+</script>
+<!-- END BATCH 7 -->
+
 </html>
 
