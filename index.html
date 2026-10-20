@@ -6490,6 +6490,406 @@ const $ = (s,p=document) => p.querySelector(s);
     }
   });
 }
+// Emerald World Tools 99–103
+{
+  const newTools = [
+    {
+      id: "pomodoro-timer-99",
+      name: "Pomodoro Study Timer",
+      category: "Study",
+      icon: "⏱️",
+      description: "Focus with timed study and break sessions.",
+      keywords: "pomodoro focus timer study break productivity",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const display = node("h2", {}, "25:00");
+        display.style.textAlign = "center";
+        display.style.fontSize = "2.5rem";
+        const status = node("p", {}, "Ready to focus");
+        status.style.textAlign = "center";
+        const work = textInput("ew99-work", "25");
+        const rest = textInput("ew99-break", "5");
+        work.type = "number";
+        rest.type = "number";
+        work.min = "1";
+        rest.min = "1";
+        p.append(display, status);
+        field("Study minutes", work);
+        field("Break minutes", rest);
+        const row = buttons();
+        let remaining = 1500;
+        let interval = null;
+        let isBreak = false;
+
+        function render() {
+          display.textContent =
+            String(Math.floor(remaining / 60)).padStart(2, "0") +
+            ":" +
+            String(remaining % 60).padStart(2, "0");
+        }
+
+        function stop() {
+          if (interval) clearInterval(interval);
+          interval = null;
+        }
+
+        function start() {
+          if (interval) return;
+          if (remaining <= 0) {
+            remaining = (Number(isBreak ? work.value : rest.value) || 5) * 60;
+            render();
+          }
+          status.textContent = isBreak ? "Break time ☕" : "Focus time 📚";
+          interval = setInterval(function () {
+            remaining--;
+            render();
+            if (remaining <= 0) {
+              stop();
+              isBreak = !isBreak;
+              remaining = Math.max(
+                1,
+                Number(isBreak ? rest.value : work.value) || (isBreak ? 5 : 25)
+              ) * 60;
+              status.textContent = isBreak
+                ? "Study session complete! Take a break. 🎉"
+                : "Break finished! Time to focus. 💪";
+              render();
+            }
+          }, 1000);
+          setResult("Timer started!");
+        }
+
+        addButton(row, "Start", start);
+        addButton(row, "Pause", function () {
+          stop();
+          status.textContent = "Timer paused";
+        });
+        addButton(row, "Reset", function () {
+          stop();
+          isBreak = false;
+          remaining = Math.max(1, Number(work.value) || 25) * 60;
+          render();
+          status.textContent = "Ready to focus";
+          setResult("Timer reset.");
+        });
+
+        work.addEventListener("change", function () {
+          if (!interval && !isBreak) {
+            remaining = Math.max(1, Number(work.value) || 25) * 60;
+            render();
+          }
+        });
+        rest.addEventListener("change", function () {
+          if (!interval && isBreak) {
+            remaining = Math.max(1, Number(rest.value) || 5) * 60;
+            render();
+          }
+        });
+      }
+    },
+    {
+      id: "essay-word-counter-100",
+      name: "Word Counter for Essays",
+      category: "Study",
+      icon: "📝",
+      description: "Count words, characters, sentences, and paragraphs.",
+      keywords: "essay word counter character sentence paragraph writing",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const input = textArea("ew100-text", "");
+        input.placeholder = "Paste or type your essay here...";
+        const stats = node("div", { className: "ew75-content" });
+        p.appendChild(stats);
+        field("Essay text", input);
+
+        function update() {
+          const value = input.value;
+          const words = value.trim() ? value.trim().split(/\s+/).length : 0;
+          const sentences = value.trim()
+            ? (value.match(/[.!?]+(?=\s|$)/g) || []).length
+            : 0;
+          const paragraphs = value.trim()
+            ? value.trim().split(/\n\s*\n/).filter(Boolean).length
+            : 0;
+          stats.textContent =
+            "Words: " + words +
+            " | Characters: " + value.length +
+            " | No-space characters: " + value.replace(/\s/g, "").length +
+            " | Sentences: " + sentences +
+            " | Paragraphs: " + paragraphs;
+        }
+
+        input.addEventListener("input", update);
+        update();
+        const row = buttons();
+        addButton(row, "Clear", function () {
+          input.value = "";
+          update();
+          setResult("Essay cleared.");
+        });
+        addButton(row, "Copy Essay", async function () {
+          if (!input.value) return setResult("Write or paste an essay first.", true);
+          try {
+            await navigator.clipboard.writeText(input.value);
+            setResult("Essay copied!");
+          } catch (_) {
+            input.focus();
+            input.select();
+            setResult("Press Ctrl+C to copy.");
+          }
+        });
+      }
+    },
+    {
+      id: "reading-time-101",
+      name: "Reading Time Calculator",
+      category: "Study",
+      icon: "📖",
+      description: "Estimate how long text will take to read.",
+      keywords: "reading time calculator words per minute text",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const input = textArea("ew101-text", "");
+        input.placeholder = "Paste an article, chapter, or notes...";
+        const speed = textInput("ew101-speed", "200");
+        speed.type = "number";
+        speed.min = "1";
+        field("Text", input);
+        field("Reading speed (words per minute)", speed);
+        const output = node("p", {});
+        p.appendChild(output);
+
+        function calculate() {
+          const count = input.value.trim()
+            ? input.value.trim().split(/\s+/).length
+            : 0;
+          const wpm = Math.max(1, Number(speed.value) || 200);
+          const minutes = count / wpm;
+          const whole = Math.floor(minutes);
+          const seconds = Math.round((minutes - whole) * 60);
+          output.textContent = count + " words · Estimated reading time: " +
+            (whole ? whole + " min " : "") + seconds + " sec";
+        }
+
+        input.addEventListener("input", calculate);
+        speed.addEventListener("input", calculate);
+        calculate();
+        const row = buttons();
+        addButton(row, "Clear", function () {
+          input.value = "";
+          calculate();
+          setResult("Text cleared.");
+        });
+      }
+    },
+    {
+      id: "gpa-calculator-102",
+      name: "GPA Calculator",
+      category: "Study",
+      icon: "🎓",
+      description: "Calculate weighted GPA using grades and credit hours.",
+      keywords: "GPA calculator grade points credits college university",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const input = textArea("ew102-courses", "");
+        input.placeholder =
+          "Enter one course per line as: Course, grade points, credits\nExample:\nMath, 4, 3\nScience, 3.5, 4";
+        field("Courses (Course, grade points, credits)", input);
+        const output = textArea("ew102-output", "");
+        output.readOnly = true;
+        field("GPA result", output);
+
+        addButton(buttons(), "Calculate GPA", function () {
+          const lines = input.value.split(/\n/).map(function (line) {
+            return line.trim();
+          }).filter(Boolean);
+          let totalPoints = 0;
+          let totalCredits = 0;
+          const errors = [];
+
+          lines.forEach(function (line, index) {
+            const parts = line.split(",");
+            if (parts.length < 3) {
+              errors.push("Line " + (index + 1) + ": use Course, grade points, credits.");
+              return;
+            }
+            const grade = Number(parts[1].trim());
+            const credits = Number(parts[2].trim());
+            if (!Number.isFinite(grade) || !Number.isFinite(credits) ||
+                grade < 0 || credits <= 0) {
+              errors.push("Line " + (index + 1) + ": enter valid non-negative grade points and positive credits.");
+              return;
+            }
+            totalPoints += grade * credits;
+            totalCredits += credits;
+          });
+
+          if (errors.length) {
+            output.value = errors.join("\n");
+            return setResult("Please fix the invalid course entries.", true);
+          }
+          if (!totalCredits) {
+            output.value = "";
+            return setResult("Enter at least one valid course.", true);
+          }
+          const gpa = totalPoints / totalCredits;
+          output.value = "Weighted GPA: " + gpa.toFixed(2) +
+            "\nTotal credits: " + totalCredits +
+            "\nTotal weighted grade points: " + totalPoints.toFixed(2) +
+            "\n\nCheck your institution's grading scale.";
+          setResult("GPA calculated!");
+        });
+
+        addButton(buttons(), "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Course entries cleared.");
+        });
+      }
+    },
+    {
+      id: "daily-study-planner-103",
+      name: "Daily Study Planner",
+      category: "Study",
+      icon: "📅",
+      description: "Plan subjects, study tasks, and time for today.",
+      keywords: "daily study planner timetable schedule subjects tasks",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const date = textInput("ew103-date", new Date().toISOString().slice(0, 10));
+        date.type = "date";
+        const tasks = textArea("ew103-tasks", "");
+        tasks.placeholder =
+          "One task per line. Example:\nMath — revise algebra — 45 min\nPhysics — practice numericals — 30 min";
+        field("Study date", date);
+        field("Today's study tasks", tasks);
+        const output = textArea("ew103-output", "");
+        output.readOnly = true;
+        field("Your daily plan", output);
+
+        addButton(buttons(), "Create Plan", function () {
+          const lines = tasks.value.split(/\n/).map(function (line) {
+            return line.trim();
+          }).filter(Boolean);
+          if (!lines.length) return setResult("Add at least one study task.", true);
+
+          output.value =
+            "DAILY STUDY PLAN\nDate: " + (date.value || "Not specified") +
+            "\n\n" + lines.map(function (line, index) {
+              return (index + 1) + ". " + line;
+            }).join("\n") +
+            "\n\nTotal tasks: " + lines.length;
+          setResult("Your daily plan is ready!");
+        });
+
+        addButton(buttons(), "Copy Plan", async function () {
+          if (!output.value) return setResult("Create your plan first.", true);
+          try {
+            await navigator.clipboard.writeText(output.value);
+            setResult("Plan copied!");
+          } catch (_) {
+            output.focus();
+            output.select();
+            setResult("Press Ctrl+C to copy.");
+          }
+        });
+
+        addButton(buttons(), "Clear", function () {
+          tasks.value = "";
+          output.value = "";
+          setResult("Planner cleared.");
+        });
+      }
+    }
+  ];
+
+  newTools.forEach(function (tool) {
+    if (document.querySelector('[data-ew-extra="' + tool.id + '"]')) return;
+
+    const card = node("article", {
+      className: "card",
+      "data-category": tool.category,
+      "data-keywords": (tool.name + " " + tool.keywords).toLowerCase(),
+      "data-ew-extra": tool.id
+    });
+
+    card.append(
+      node("div", { className: "card-icon" }, tool.icon),
+      node("h3", {}, tool.name),
+      node("p", { className: "card-description" }, tool.description),
+      node("span", { className: "tag" }, tool.category)
+    );
+
+    const openButton = node(
+      "button",
+      { type: "button", className: "btn primary" },
+      "Open Tool →"
+    );
+    card.appendChild(openButton);
+
+    const panel = node("section", {
+      id: "ew99-panel-" + tool.id,
+      className: "tool-panel ew75-panel",
+      "aria-label": tool.name
+    });
+
+    const closeRow = node("div", { className: "ew75-content" });
+    const closeButton = node(
+      "button",
+      { type: "button", className: "btn" },
+      "✕ Close Tool"
+    );
+    closeButton.addEventListener("click", function () {
+      panel.style.display = "none";
+    });
+    closeRow.appendChild(closeButton);
+    panel.appendChild(closeRow);
+
+    const p = node("div", { className: "ew75-content" });
+    panel.appendChild(p);
+    document.body.appendChild(panel);
+
+    function field(label, control) {
+      makeField(p, label, control);
+      return control;
+    }
+
+    function buttons() {
+      return actionRow(p);
+    }
+
+    function setResult(message, error) {
+      showResult(p, message, error);
+    }
+
+    function addCopy(row, output, label) {
+      addButton(row, label || "Copy Output", async function () {
+        const value = typeof output === "string" ? output : output.value;
+        if (!value) return setResult("There is no output to copy.", true);
+        try {
+          await navigator.clipboard.writeText(value);
+          setResult("Copied to clipboard!");
+        } catch (_) {
+          if (output && typeof output !== "string") {
+            output.focus();
+            output.select();
+          }
+          setResult("Clipboard access failed. Select the output and press Ctrl+C.", true);
+        }
+      });
+    }
+
+    if (typeof tool.build === "function") {
+      tool.build(p, field, buttons, setResult, addCopy);
+    }
+
+    openButton.addEventListener("click", function (event) {
+      event.stopPropagation();
+      document.querySelectorAll(".ew75-panel").forEach(function (item) {
+        item.style.display = "none";
+      });
+      panel.style.display = "block";
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    grid.appendChild(card);
+  });
+}  
   const guard = node("span", {id:"ew5-tools-71-75-loaded"});
   guard.hidden = true;
   document.body.appendChild(guard);
