@@ -3165,5 +3165,604 @@ const $ = (s,p=document) => p.querySelector(s);
 })();
 </script>
 
+<script>
+(function () {
+  "use strict";
+
+  if (document.getElementById("ew5-tools-66-70-loaded")) return;
+  const grid = document.getElementById("grid");
+  if (!grid) {
+    console.error("Emerald World: #grid was not found.");
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "ew5-tools-66-70-style";
+  style.textContent = `
+    .ew5-panel {
+      display:none;
+      box-sizing:border-box;
+      width:min(100% - 24px,850px);
+      margin:24px auto;
+      padding:22px;
+      border:1px solid var(--border-color,#d9d9d9);
+      border-radius:16px;
+      background:var(--card-bg,#fff);
+      color:var(--text-color,inherit);
+      box-shadow:0 5px 22px rgba(0,0,0,.07);
+    }
+    .ew5-panel h2 { margin:0 0 8px; }
+    .ew5-panel .ew5-description { margin:0 0 18px; opacity:.75; }
+    .ew5-panel .ew5-field { margin:14px 0; }
+    .ew5-panel label { display:block; margin-bottom:6px; font-weight:600; }
+    .ew5-panel input:not([type=checkbox]),
+    .ew5-panel textarea,
+    .ew5-panel select {
+      box-sizing:border-box;
+      width:100%;
+      max-width:100%;
+      padding:11px 12px;
+      border:1px solid #bfc5cc;
+      border-radius:9px;
+      font:inherit;
+      color:inherit;
+      background:var(--input-bg,#fff);
+    }
+    .ew5-panel textarea { min-height:125px; resize:vertical; }
+    .ew5-panel .ew5-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:14px; }
+    .ew5-panel .ew5-result {
+      margin-top:16px;
+      padding:13px;
+      border-radius:10px;
+      background:var(--result-bg,#f3f5f7);
+      overflow-wrap:anywhere;
+    }
+    .ew5-panel .ew5-output {
+      display:block;
+      width:100%;
+      min-height:130px;
+      margin-top:10px;
+      font-family:monospace;
+      white-space:pre;
+    }
+    .ew5-panel .ew5-error { color:#c62828; }
+    .ew5-panel .ew5-close { float:right; }
+    .ew5-panel .ew5-muted { opacity:.7; font-size:.9em; }
+  `;
+  document.head.appendChild(style);
+
+  const tools = [
+    {
+      id: "sentence-counter",
+      number: 66,
+      name: "Sentence Counter",
+      category: "Text",
+      keywords: "sentence paragraph word count text statistics",
+      icon: "📝",
+      description: "Count sentences, paragraphs, words and characters in your text."
+    },
+    {
+      id: "percentage-change",
+      number: 67,
+      name: "Percentage Change Calculator",
+      category: "Calculators",
+      keywords: "percentage increase decrease difference calculator",
+      icon: "📈",
+      description: "Calculate the percentage increase or decrease between two values."
+    },
+    {
+      id: "business-days",
+      number: 68,
+      name: "Business Days Calculator",
+      category: "Calculators",
+      keywords: "working weekdays date business days calculator",
+      icon: "📅",
+      description: "Count working days between two dates, excluding Saturdays and Sundays."
+    },
+    {
+      id: "xml-formatter",
+      number: 69,
+      name: "XML Formatter",
+      category: "Developer",
+      keywords: "xml formatter beautifier validator developer code",
+      icon: "🧩",
+      description: "Validate XML and format it with readable indentation."
+    },
+    {
+      id: "json-xml",
+      number: 70,
+      name: "JSON to XML Converter",
+      category: "Converters",
+      keywords: "json xml convert data developer",
+      icon: "🔄",
+      description: "Convert JSON data into readable XML that you can copy."
+    }
+  ];
+
+  function el(tag, attrs, text) {
+    const node = document.createElement(tag);
+    Object.entries(attrs || {}).forEach(([key, value]) => {
+      if (key === "className") node.className = value;
+      else if (key === "textContent") node.textContent = value;
+      else node.setAttribute(key, value);
+    });
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function field(parent, labelText, control) {
+    const wrap = el("div", { className: "ew5-field" });
+    const label = el("label", {});
+    label.textContent = labelText;
+    if (control.id) label.htmlFor = control.id;
+    wrap.append(label, control);
+    parent.appendChild(wrap);
+    return control;
+  }
+
+  function input(id, type, value, placeholder) {
+    const node = el("input", { id, type });
+    if (value !== undefined) node.value = value;
+    if (placeholder) node.placeholder = placeholder;
+    return node;
+  }
+
+  function textarea(id, placeholder) {
+    const node = el("textarea", { id, placeholder: placeholder || "" });
+    return node;
+  }
+
+  function button(parent, label, fn, primary) {
+    const b = el("button", {
+      type: "button",
+      className: primary ? "btn primary" : "btn"
+    }, label);
+    b.addEventListener("click", fn);
+    parent.appendChild(b);
+    return b;
+  }
+
+  function actions(parent) {
+    return el("div", { className: "ew5-actions" });
+  }
+
+  function result(parent, text, error) {
+    let box = parent.querySelector(".ew5-result");
+    if (!box) {
+      box = el("div", { className: "ew5-result", role: "status" });
+      parent.appendChild(box);
+    }
+    box.classList.toggle("ew5-error", !!error);
+    box.textContent = text;
+  }
+
+  function addCopyButton(parent, output) {
+    button(parent, "Copy result", async function () {
+      if (!output.value) {
+        result(parent, "There is no result to copy yet.", true);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(output.value);
+        result(parent, "Copied to clipboard!");
+      } catch (_) {
+        output.focus();
+        output.select();
+        result(parent, "Select the result and copy it using Ctrl+C.");
+      }
+    });
+  }
+
+  function makePanel(tool) {
+    const panel = el("section", {
+      id: "ew5-panel-" + tool.id,
+      className: "tool-panel ew5-panel",
+      "aria-label": tool.name
+    });
+
+    const close = el("button", {
+      type: "button",
+      className: "btn ew5-close",
+      "aria-label": "Close tool"
+    }, "✕ Close");
+    close.addEventListener("click", function () {
+      panel.style.display = "none";
+    });
+
+    const title = el("h2", {}, tool.icon + " " + tool.name);
+    const desc = el("p", { className: "ew5-description" }, tool.description);
+    panel.append(close, title, desc);
+
+    const content = el("div", { className: "ew5-content" });
+    panel.appendChild(content);
+    document.body.appendChild(panel);
+    return { panel, content };
+  }
+
+  const entries = {};
+
+  tools.forEach(function (tool) {
+    // Keep the existing Emerald World card design.
+    const card = el("article", {
+      className: "card",
+      "data-category": tool.category,
+      "data-keywords": tool.name.toLowerCase() + " " + tool.keywords,
+      tabindex: "0",
+      role: "button",
+      "aria-label": "Open " + tool.name
+    });
+
+    card.appendChild(el("div", { className: "card-icon" }, tool.icon));
+    card.appendChild(el("h3", {}, tool.name));
+    card.appendChild(el("span", { className: "tag" }, tool.category));
+
+    const openBtn = el("button", {
+      type: "button",
+      className: "btn primary"
+    }, "Open Tool");
+    card.appendChild(openBtn);
+
+    const entry = makePanel(tool);
+    entries[tool.id] = entry;
+
+    function open() {
+      document.querySelectorAll(".ew5-panel").forEach(function (p) {
+        p.style.display = "none";
+      });
+      entry.panel.style.display = "block";
+      entry.panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", function (event) {
+      if (event.target !== card) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+    openBtn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      open();
+    });
+
+    grid.appendChild(card);
+  });
+
+  // 66. Sentence Counter
+  {
+    const p = entries["sentence-counter"].content;
+    const text = textarea("ew5-sentence-text", "Paste or type your text here...");
+    field(p, "Your text", text);
+    const row = actions(p);
+    p.appendChild(row);
+    button(row, "Count Text", function () {
+      const value = text.value.trim();
+      if (!value) {
+        result(p, "Please enter some text first.", true);
+        return;
+      }
+      const words = value.match(/\S+/g) || [];
+      const sentences = value.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+      const paragraphs = value.split(/\n\s*\n/).filter(s => s.trim()).length;
+      const chars = text.value.length;
+      const noSpaces = text.value.replace(/\s/g, "").length;
+      const avg = sentences.length ? (words.length / sentences.length).toFixed(2) : "0";
+      result(
+        p,
+        "Sentences: " + sentences.length +
+        "\nWords: " + words.length +
+        "\nParagraphs: " + paragraphs +
+        "\nCharacters (with spaces): " + chars +
+        "\nCharacters (without whitespace): " + noSpaces +
+        "\nAverage words per sentence: " + avg
+      );
+    }, true);
+    button(row, "Clear", function () {
+      text.value = "";
+      result(p, "Enter text to calculate its statistics.");
+    });
+    result(p, "Enter text and select Count Text.");
+  }
+
+  // 67. Percentage Change Calculator
+  {
+    const p = entries["percentage-change"].content;
+    const oldVal = input("ew5-pct-old", "number", "", "Starting value");
+    oldVal.step = "any";
+    const newVal = input("ew5-pct-new", "number", "", "Ending value");
+    newVal.step = "any";
+    field(p, "Original value", oldVal);
+    field(p, "New value", newVal);
+    const row = actions(p);
+    p.appendChild(row);
+    button(row, "Calculate Change", function () {
+      if (oldVal.value.trim() === "" || newVal.value.trim() === "") {
+        result(p, "Enter both values.", true);
+        return;
+      }
+      const a = Number(oldVal.value);
+      const b = Number(newVal.value);
+      if (!Number.isFinite(a) || !Number.isFinite(b)) {
+        result(p, "Please enter valid numbers.", true);
+        return;
+      }
+      if (a === 0) {
+        result(p, b === 0
+          ? "Both values are zero. Percentage change is undefined."
+          : "Percentage change is undefined because the original value is zero.", true);
+        return;
+      }
+      const diff = b - a;
+      const pct = diff / Math.abs(a) * 100;
+      const direction = diff > 0 ? "Increase" : diff < 0 ? "Decrease" : "No change";
+      result(p,
+        direction + "\n" +
+        "Difference: " + diff + "\n" +
+        "Percentage change: " + pct.toFixed(4).replace(/\.?0+$/, "") + "%"
+      );
+    }, true);
+    button(row, "Clear", function () {
+      oldVal.value = "";
+      newVal.value = "";
+      result(p, "Enter the original and new values.");
+    });
+    result(p, "Enter both values to calculate the change.");
+  }
+
+  // 68. Business Days Calculator
+  {
+    const p = entries["business-days"].content;
+    const start = input("ew5-business-start", "date", "");
+    const end = input("ew5-business-end", "date", "");
+    field(p, "Start date", start);
+    field(p, "End date", end);
+
+    const includeStartWrap = el("div", { className: "ew5-field" });
+    const includeStart = input("ew5-business-include", "checkbox");
+    includeStart.checked = true;
+    const label = el("label", {});
+    label.append(includeStart, document.createTextNode(" Include the start date if it is a weekday"));
+    includeStartWrap.appendChild(label);
+    p.appendChild(includeStartWrap);
+
+    const row = actions(p);
+    p.appendChild(row);
+
+    button(row, "Count Business Days", function () {
+      if (!start.value || !end.value) {
+        result(p, "Please select both dates.", true);
+        return;
+      }
+      const a = new Date(start.value + "T12:00:00Z");
+      const b = new Date(end.value + "T12:00:00Z");
+      if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+        result(p, "Please select valid dates.", true);
+        return;
+      }
+      if (a > b) {
+        result(p, "The start date must be on or before the end date.", true);
+        return;
+      }
+
+      let count = 0;
+      const cursor = new Date(a);
+      while (cursor <= b) {
+        const weekday = cursor.getUTCDay();
+        if (weekday !== 0 && weekday !== 6 &&
+            (includeStart.checked || cursor.getTime() !== a.getTime())) {
+          count++;
+        }
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+      result(p, "Business days: " + count +
+        "\nWeekend days are excluded. Public holidays are not excluded.");
+    }, true);
+
+    button(row, "Clear", function () {
+      start.value = "";
+      end.value = "";
+      includeStart.checked = true;
+      result(p, "Select a date range to begin.");
+    });
+    result(p, "Choose a start and end date.");
+  }
+
+  // XML helpers used by tools 69 and 70.
+  function escapeXml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
+  }
+
+  function validXmlName(name) {
+    return /^[A-Za-z_][A-Za-z0-9_.-]*$/.test(name) &&
+      !/^xml/i.test(name);
+  }
+
+  function prettyXmlNode(node, depth) {
+    const indent = "  ".repeat(depth);
+    if (node.nodeType === Node.TEXT_NODE) {
+      return escapeXml(node.nodeValue);
+    }
+    if (node.nodeType === Node.COMMENT_NODE) {
+      return indent + "<!--" + node.nodeValue + "-->";
+    }
+    if (node.nodeType === Node.PROCESSING_INSTRUCTION_NODE) {
+      return indent + "<?" + node.target +
+        (node.data ? " " + node.data : "") + "?>";
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+
+    const tag = node.tagName;
+    const attrs = Array.from(node.attributes).map(function (a) {
+      return " " + a.name + '="' + escapeXml(a.value) + '"';
+    }).join("");
+    const children = Array.from(node.childNodes);
+    if (!children.length) return indent + "<" + tag + attrs + "/>";
+
+    const meaningful = children.filter(function (n) {
+      return !(n.nodeType === Node.TEXT_NODE && !n.nodeValue.trim());
+    });
+    if (!meaningful.length) return indent + "<" + tag + attrs + "/>";
+
+    // Preserve mixed content rather than injecting whitespace into it.
+    if (meaningful.some(n => n.nodeType === Node.TEXT_NODE)) {
+      const inner = children.map(function (n) {
+        if (n.nodeType === Node.TEXT_NODE) return escapeXml(n.nodeValue);
+        if (n.nodeType === Node.ELEMENT_NODE) {
+          return new XMLSerializer().serializeToString(n);
+        }
+        if (n.nodeType === Node.COMMENT_NODE) return "<!--" + n.nodeValue + "-->";
+        return "";
+      }).join("");
+      return indent + "<" + tag + attrs + ">" + inner + "</" + tag + ">";
+    }
+
+    const inner = meaningful.map(function (n) {
+      return prettyXmlNode(n, depth + 1);
+    }).filter(Boolean).join("\n");
+    return indent + "<" + tag + attrs + ">\n" +
+      inner + "\n" + indent + "</" + tag + ">";
+  }
+
+  // 69. XML Formatter
+  {
+    const p = entries["xml-formatter"].content;
+    const source = textarea("ew5-xml-source", "Paste XML here...");
+    field(p, "XML input", source);
+    const output = textarea("ew5-xml-output", "");
+    output.classList.add("ew5-output");
+    output.readOnly = true;
+    field(p, "Formatted XML", output);
+
+    const row = actions(p);
+    p.appendChild(row);
+
+    button(row, "Format XML", function () {
+      if (!source.value.trim()) {
+        result(p, "Please paste XML first.", true);
+        return;
+      }
+      const doc = new DOMParser().parseFromString(source.value, "application/xml");
+      const parseError = doc.getElementsByTagName("parsererror")[0];
+      if (parseError) {
+        output.value = "";
+        result(p, "Invalid XML. Check the tags, attributes, and closing elements.", true);
+        return;
+      }
+      const declaration = source.value.trim().match(/^<\?xml[\s\S]*?\?>/i);
+      const pieces = [];
+      if (declaration) pieces.push(declaration[0]);
+      Array.from(doc.childNodes).forEach(function (node) {
+        if (node.nodeType === Node.ELEMENT_NODE ||
+            node.nodeType === Node.COMMENT_NODE ||
+            node.nodeType === Node.PROCESSING_INSTRUCTION_NODE) {
+          pieces.push(prettyXmlNode(node, 0));
+        }
+      });
+      output.value = pieces.join("\n");
+      result(p, "XML validated and formatted successfully.");
+    }, true);
+
+    button(row, "Clear", function () {
+      source.value = "";
+      output.value = "";
+      result(p, "Paste XML to get started.");
+    });
+    addCopyButton(p, output);
+    result(p, "Your formatted XML will appear here.");
+  }
+
+  // 70. JSON to XML Converter
+  {
+    const p = entries["json-xml"].content;
+    const source = textarea("ew5-json-source", 'Paste JSON here, e.g. {"name":"Emerald","active":true}');
+    field(p, "JSON input", source);
+    const rootInput = input("ew5-json-root", "text", "root", "root");
+    field(p, "XML root element name", rootInput);
+    const output = textarea("ew5-json-xml-output", "");
+    output.classList.add("ew5-output");
+    output.readOnly = true;
+    field(p, "XML output", output);
+
+    function jsonToXml(value, name, depth) {
+      const indent = "  ".repeat(depth);
+      if (!validXmlName(name)) {
+        throw new Error("Invalid XML element name: " + name);
+      }
+
+      if (value === null || typeof value !== "object") {
+        return indent + "<" + name + ">" +
+          (value === null ? "" : escapeXml(value)) +
+          "</" + name + ">";
+      }
+
+      if (Array.isArray(value)) {
+        if (!value.length) return indent + "<" + name + "/>";
+        return indent + "<" + name + ">\n" +
+          value.map(function (item) {
+            return jsonToXml(item, "item", depth + 1);
+          }).join("\n") +
+          "\n" + indent + "</" + name + ">";
+      }
+
+      const keys = Object.keys(value);
+      if (!keys.length) return indent + "<" + name + "/>";
+
+      return indent + "<" + name + ">\n" +
+        keys.map(function (key) {
+          return jsonToXml(value[key], key, depth + 1);
+        }).join("\n") +
+        "\n" + indent + "</" + name + ">";
+    }
+
+    const row = actions(p);
+    p.appendChild(row);
+
+    button(row, "Convert to XML", function () {
+      if (!source.value.trim()) {
+        result(p, "Please paste JSON first.", true);
+        return;
+      }
+      const root = rootInput.value.trim() || "root";
+      if (!validXmlName(root)) {
+        result(p, "Enter a valid XML root name. Use letters, numbers, underscores, dots or hyphens; it must start with a letter or underscore.", true);
+        return;
+      }
+
+      try {
+        const data = JSON.parse(source.value);
+        const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+          jsonToXml(data, root, 0);
+        output.value = xml;
+        result(p, "Conversion completed successfully.");
+      } catch (err) {
+        output.value = "";
+        result(p, "Conversion failed: " + err.message, true);
+      }
+    }, true);
+
+    button(row, "Clear", function () {
+      source.value = "";
+      rootInput.value = "root";
+      output.value = "";
+      result(p, "Paste JSON to get started.");
+    });
+    addCopyButton(p, output);
+    result(p, "JSON arrays are represented by repeated <item> elements.");
+  }
+
+  // Set the guard only after all tools have initialized.
+  const guard = el("span", { id: "ew5-tools-66-70-loaded" });
+  guard.hidden = true;
+  document.body.appendChild(guard);
+
+})();
+</script>
+
 </html>
 
