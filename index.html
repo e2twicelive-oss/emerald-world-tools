@@ -5550,347 +5550,570 @@ const $ = (s,p=document) => p.querySelector(s);
     return rows;
   }
 
-  /* 81 — CSV TO XML */
+  // Emerald World Tools 81–85
   {
-    const tool = tools[0];
-    const panel = makePanel(tool, content => {
-      const input = addInput(
-        content,
-        "ew81-csv-input",
-        "name,age,city\nAlex,20,Jaipur\nSam,22,Udaipur"
-      );
-      const result = addResult(content);
-      const actions = addActions(content);
+    const newTools = [
+      {
+        id: "csv-xml-81",
+        name: "CSV to XML Converter",
+        category: "Converters",
+        icon: "📊",
+        keywords: "csv xml convert spreadsheet data",
+        description: "Convert CSV rows into structured XML."
+      },
+      {
+        id: "json-yaml-82",
+        name: "JSON to YAML Converter",
+        category: "Converters",
+        icon: "🧩",
+        keywords: "json yaml yml convert config",
+        description: "Convert JSON objects into YAML format."
+      },
+      {
+        id: "xml-json-83",
+        name: "XML to JSON Converter",
+        category: "Converters",
+        icon: "🔄",
+        keywords: "xml json convert data parser",
+        description: "Convert XML elements into JSON objects."
+      },
+      {
+        id: "image-dataurl-84",
+        name: "Image to Data URL Converter",
+        category: "Image",
+        icon: "🖼️",
+        keywords: "image data url base64 embed convert",
+        description: "Convert an image into an embeddable Data URL."
+      },
+      {
+        id: "dataurl-file-85",
+        name: "Data URL to File Converter",
+        category: "Converters",
+        icon: "📁",
+        keywords: "data url base64 decode download file",
+        description: "Decode a Data URL and download its file."
+      }
+    ];
 
-      addButton(actions, "Convert to XML", () => {
-        try {
-          const rows = parseCSV(input.value.trim());
-          if (rows.length < 2) {
-            throw new Error("Enter a header row and at least one data row.");
+    newTools.forEach(function (tool) {
+      if (document.querySelector('[data-ew-extra="' + tool.id + '"]')) return;
+
+      const card = node("article", {
+        className: "card",
+        "data-category": tool.category,
+        "data-keywords": (tool.name + " " + tool.keywords).toLowerCase(),
+        "data-ew-extra": tool.id
+      });
+
+      card.append(
+        node("div", {className:"card-icon"}, tool.icon),
+        node("h3", {}, tool.name),
+        node("p", {className:"card-description"}, tool.description),
+        node("span", {className:"tag"}, tool.category)
+      );
+
+      const openButton = node("button", {
+        type: "button",
+        className: "btn primary"
+      }, "Open Tool →");
+      card.appendChild(openButton);
+
+      const panel = node("section", {
+        id: "ew81-panel-" + tool.id,
+        className: "tool-panel ew75-panel",
+        "aria-label": tool.name
+      });
+
+      const close = node("button", {
+        type: "button",
+        className: "btn ew75-close"
+      }, "✕ Close");
+
+      close.addEventListener("click", function () {
+        panel.style.display = "none";
+      });
+
+      panel.append(
+        close,
+        node("h2", {}, tool.icon + " " + tool.name),
+        node("p", {className:"ew75-description"}, tool.description)
+      );
+
+      const p = node("div", {className:"ew75-content"});
+      panel.appendChild(p);
+      document.body.appendChild(panel);
+
+      openButton.addEventListener("click", function (event) {
+        event.stopPropagation();
+        document.querySelectorAll(".ew75-panel").forEach(function (item) {
+          item.style.display = "none";
+        });
+        panel.style.display = "block";
+        panel.scrollIntoView({behavior:"smooth", block:"start"});
+      });
+
+      grid.appendChild(card);
+
+      function field(label, control) {
+        makeField(p, label, control);
+        return control;
+      }
+
+      function buttons() {
+        return actionRow(p);
+      }
+
+      function setResult(message, error) {
+        showResult(p, message, error);
+      }
+
+      function addCopyButton(row, output, label) {
+        addButton(row, label || "Copy Result", async function () {
+          if (!output.value) {
+            return setResult("There is no result to copy.", true);
           }
-
-          const headers = rows[0].map((h, i) => {
-            const name = h.trim().replace(/[^a-zA-Z0-9_.-]/g, "_");
-            return /^[A-Za-z_]/.test(name) ? name : "column_" + (i + 1);
-          });
-
-          const xml = [
-            '<?xml version="1.0" encoding="UTF-8"?>',
-            "<rows>",
-            ...rows.slice(1).map(row =>
-              "  <row>\n" +
-              headers.map((header, i) =>
-                "    <" + header + ">" +
-                escapeXML(row[i] ?? "") +
-                "</" + header + ">"
-              ).join("\n") +
-              "\n  </row>"
-            ),
-            "</rows>"
-          ].join("\n");
-
-          show(result, xml);
-        } catch (error) {
-          show(result, "Error: " + error.message);
-        }
-      }, true);
-
-      copyButton(actions, result);
-      addButton(actions, "Download XML", () => {
-        download("converted.xml", result.value, "application/xml");
-      });
-    });
-    addCard(tool, panel);
-  }
-
-  /* 82 — JSON TO YAML */
-  {
-    const tool = tools[1];
-
-    function yamlString(value) {
-      if (value === "") return '""';
-      if (/^(true|false|null|~|[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:e[-+]?[0-9]+)?)$/i.test(value)) {
-        return JSON.stringify(value);
-      }
-      if (/^[\s:#,[\]{}&*!|>'"%@`?]|:\s|[\s]$|[\r\n]/.test(value)) {
-        return JSON.stringify(value);
-      }
-      return value;
-    }
-
-    function toYAML(value, depth = 0) {
-      const pad = "  ".repeat(depth);
-
-      if (value === null) return "null";
-      if (typeof value === "string") return yamlString(value);
-      if (typeof value !== "object") return String(value);
-
-      const entries = Array.isArray(value)
-        ? value.map((v, i) => [i, v])
-        : Object.entries(value);
-
-      if (!entries.length) return Array.isArray(value) ? "[]" : "{}";
-
-      return entries.map(([key, item]) => {
-        const prefix = Array.isArray(value)
-          ? "- "
-          : yamlString(String(key)) + ": ";
-
-        if (item !== null && typeof item === "object" &&
-            Object.keys(item).length > 0) {
-          return pad + prefix.trimEnd() + "\n" +
-            toYAML(item, depth + 1);
-        }
-
-        return pad + prefix + toYAML(item, 0);
-      }).join("\n");
-    }
-
-    const panel = makePanel(tool, content => {
-      const input = addInput(
-        content,
-        "ew82-json-input",
-        '{"name":"Emerald World","tools":80,"free":true}'
-      );
-      const result = addResult(content);
-      const actions = addActions(content);
-
-      addButton(actions, "Convert to YAML", () => {
-        try {
-          const data = JSON.parse(input.value);
-          show(result, toYAML(data));
-        } catch (error) {
-          show(result, "Invalid JSON: " + error.message);
-        }
-      }, true);
-
-      copyButton(actions, result);
-      addButton(actions, "Download YAML", () => {
-        download("converted.yaml", result.value, "text/yaml;charset=utf-8");
-      });
-    });
-    addCard(tool, panel);
-  }
-
-  /* 83 — XML TO JSON */
-  {
-    const tool = tools[2];
-
-    function elementToValue(element) {
-      const children = Array.from(element.children);
-      const result = {};
-
-      if (element.attributes.length) {
-        result["@attributes"] = {};
-        Array.from(element.attributes).forEach(attr => {
-          result["@attributes"][attr.name] = attr.value;
+          try {
+            await navigator.clipboard.writeText(output.value);
+            setResult("Copied to clipboard!");
+          } catch (_) {
+            output.focus();
+            output.select();
+            setResult("Press Ctrl+C to copy.");
+          }
         });
       }
 
-      children.forEach(child => {
-        const value = elementToValue(child);
-        if (Object.prototype.hasOwnProperty.call(result, child.tagName)) {
-          if (!Array.isArray(result[child.tagName])) {
-            result[child.tagName] = [result[child.tagName]];
-          }
-          result[child.tagName].push(value);
-        } else {
-          result[child.tagName] = value;
+      // 81. CSV to XML Converter
+      if (tool.id === "csv-xml-81") {
+        const input = field("CSV input", textArea("ew81-csv-in", ""));
+        input.rows = 8;
+        input.placeholder = 'name,age,city\nAlex,21,Jaipur\nSam,25,Delhi';
+
+        const rootName = field("XML root element", textInput("ew81-root", "rows"));
+        const itemName = field("XML row element", textInput("ew81-item", "row"));
+        const output = field("XML output", textArea("ew81-csv-out", ""));
+        output.rows = 10;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        function escapeXML(value) {
+          return String(value).replace(/[&<>"']/g, function (c) {
+            return {
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&apos;"
+            }[c];
+          });
         }
-      });
 
-      const text = Array.from(element.childNodes)
-        .filter(n => n.nodeType === Node.TEXT_NODE)
-        .map(n => n.nodeValue)
-        .join("")
-        .trim();
+        function parseCSV(text) {
+          const rows = [];
+          let row = [], cell = "", quoted = false;
+          for (let i = 0; i < text.length; i++) {
+            const c = text[i];
+            if (quoted) {
+              if (c === '"' && text[i + 1] === '"') {
+                cell += '"';
+                i++;
+              } else if (c === '"') {
+                quoted = false;
+              } else {
+                cell += c;
+              }
+            } else if (c === '"' && cell === "") {
+              quoted = true;
+            } else if (c === ",") {
+              row.push(cell);
+              cell = "";
+            } else if (c === "\n") {
+              row.push(cell.replace(/\r$/, ""));
+              rows.push(row);
+              row = [];
+              cell = "";
+            } else {
+              cell += c;
+            }
+          }
+          if (quoted) throw new Error("A quoted CSV field was not closed.");
+          if (cell.length || row.length) {
+            row.push(cell.replace(/\r$/, ""));
+            rows.push(row);
+          }
+          return rows;
+        }
 
-      if (!children.length && !element.attributes.length) return text;
-      if (text) result["#text"] = text;
-      return result;
-    }
+        const row = buttons();
 
-    const panel = makePanel(tool, content => {
-      const input = addInput(
-        content,
-        "ew83-xml-input",
-        '<person id="1"><name>Alex</name><city>Jaipur</city></person>'
-      );
-      const result = addResult(content);
-      const actions = addActions(content);
-
-      addButton(actions, "Convert to JSON", () => {
-        try {
-          const doc = new DOMParser().parseFromString(
-            input.value,
-            "application/xml"
-          );
-
-          if (doc.querySelector("parsererror") || !doc.documentElement) {
-            throw new Error("Please check your XML syntax.");
+        addButton(row, "Convert to XML", function () {
+          if (!input.value.trim()) {
+            return setResult("Paste CSV data first.", true);
           }
 
-          const output = {
-            [doc.documentElement.tagName]: elementToValue(doc.documentElement)
+          const root = rootName.value.trim();
+          const item = itemName.value.trim();
+          const validName = /^[A-Za-z_][\w.-]*$/;
+
+          if (!validName.test(root) || !validName.test(item)) {
+            return setResult("Use valid XML element names for both fields.", true);
+          }
+
+          try {
+            const rows = parseCSV(input.value);
+            if (rows.length < 2) {
+              return setResult("Include a header row and at least one data row.", true);
+            }
+
+            const headers = rows[0].map((h, i) => h.trim() || "column" + (i + 1));
+            const xml = [
+              '<?xml version="1.0" encoding="UTF-8"?>',
+              "<" + root + ">",
+              ...rows.slice(1).filter(r => r.some(v => v.trim())).map(r =>
+                "  <" + item + ">\n" +
+                headers.map((h, i) =>
+                  "    <" + (validName.test(h) ? h : "column" + (i + 1)) + ">" +
+                  escapeXML(r[i] || "") +
+                  "</" + (validName.test(h) ? h : "column" + (i + 1)) + ">"
+                ).join("\n") +
+                "\n  </" + item + ">"
+              ),
+              "</" + root + ">"
+            ].join("\n");
+
+            output.value = xml;
+            setResult("Converted " + Math.max(0, rows.length - 1) + " CSV data row(s).");
+          } catch (e) {
+            setResult(e.message || "Could not parse this CSV.", true);
+          }
+        }, true);
+
+        addCopyButton(row, output, "Copy XML");
+
+        addButton(row, "Download XML", function () {
+          if (!output.value) return setResult("Convert CSV data first.", true);
+          downloadText("emerald-world-converted.xml", output.value, "application/xml;charset=utf-8");
+        });
+
+        showResult(p, "The first CSV row becomes XML field names. Quote CSV fields containing commas.");
+      }
+
+      // 82. JSON to YAML Converter
+      if (tool.id === "json-yaml-82") {
+        const input = field("JSON input", textArea("ew82-json-in", ""));
+        input.rows = 9;
+        input.placeholder = '{"name":"Emerald World","free":true,"tools":[81,82,83]}';
+
+        const output = field("YAML output", textArea("ew82-yaml-out", ""));
+        output.rows = 10;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        function yamlScalar(value) {
+          if (value === null) return "null";
+          if (typeof value === "string") return JSON.stringify(value);
+          return String(value);
+        }
+
+        function toYAML(value, indent) {
+          const pad = " ".repeat(indent);
+
+          if (Array.isArray(value)) {
+            if (!value.length) return pad + "[]";
+            return value.map(item => {
+              if (item && typeof item === "object" && Object.keys(item).length) {
+                const lines = toYAML(item, indent + 2).split("\n");
+                return pad + "- " + lines[0].trimStart() + (
+                  lines.length > 1 ? "\n" + lines.slice(1).join("\n") : ""
+                );
+              }
+              return pad + "- " + yamlScalar(item);
+            }).join("\n");
+          }
+
+          if (value && typeof value === "object") {
+            const entries = Object.entries(value);
+            if (!entries.length) return pad + "{}";
+
+            return entries.map(([key, val]) => {
+              const safeKey = /^[A-Za-z_][\w-]*$/.test(key) ? key : JSON.stringify(key);
+              if (val && typeof val === "object" &&
+                  !(Array.isArray(val) && val.length === 0) &&
+                  !( !Array.isArray(val) && Object.keys(val).length === 0)) {
+                return pad + safeKey + ":\n" + toYAML(val, indent + 2);
+              }
+              if (Array.isArray(val) && val.length === 0) {
+                return pad + safeKey + ": []";
+              }
+              if (val && typeof val === "object" && !Array.isArray(val)) {
+                return pad + safeKey + ": {}";
+              }
+              return pad + safeKey + ": " + yamlScalar(val);
+            }).join("\n");
+          }
+
+          return pad + yamlScalar(value);
+        }
+
+        const row = buttons();
+
+        addButton(row, "Convert to YAML", function () {
+          try {
+            if (!input.value.trim()) return setResult("Paste JSON first.", true);
+            const parsed = JSON.parse(input.value);
+            output.value = toYAML(parsed, 0);
+            setResult("JSON converted to basic YAML.");
+          } catch (e) {
+            setResult("Invalid JSON: " + e.message, true);
+          }
+        }, true);
+
+        addCopyButton(row, output, "Copy YAML");
+
+        addButton(row, "Download YAML", function () {
+          if (!output.value) return setResult("Convert JSON first.", true);
+          downloadText("emerald-world-converted.yaml", output.value, "text/yaml;charset=utf-8");
+        });
+
+        showResult(p, "Converts common JSON values to basic YAML. Complex YAML features and custom tags are not supported.");
+      }
+
+      // 83. XML to JSON Converter
+      if (tool.id === "xml-json-83") {
+        const input = field("XML input", textArea("ew83-xml-in", ""));
+        input.rows = 9;
+        input.placeholder = "<person><name>Alex</name><age>21</age></person>";
+
+        const output = field("JSON output", textArea("ew83-json-out", ""));
+        output.rows = 10;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        function xmlNodeToObject(element) {
+          const obj = {};
+
+          Array.from(element.attributes).forEach(a => {
+            obj["@" + a.name] = a.value;
+          });
+
+          const children = Array.from(element.children);
+          const text = Array.from(element.childNodes)
+            .filter(n => n.nodeType === Node.TEXT_NODE)
+            .map(n => n.nodeValue.trim())
+            .filter(Boolean)
+            .join(" ");
+
+          children.forEach(child => {
+            const value = xmlNodeToObject(child);
+            if (Object.prototype.hasOwnProperty.call(obj, child.tagName)) {
+              if (!Array.isArray(obj[child.tagName])) obj[child.tagName] = [obj[child.tagName]];
+              obj[child.tagName].push(value);
+            } else {
+              obj[child.tagName] = value;
+            }
+          });
+
+          if (text) obj["#text"] = text;
+
+          if (!Object.keys(obj).length) return "";
+          return obj;
+        }
+
+        const row = buttons();
+
+        addButton(row, "Convert to JSON", function () {
+          if (!input.value.trim()) return setResult("Paste XML first.", true);
+
+          const doc = new DOMParser().parseFromString(input.value, "application/xml");
+          if (doc.querySelector("parsererror")) {
+            return setResult("Invalid XML. Check your tags and nesting.", true);
+          }
+
+          const root = doc.documentElement;
+          output.value = JSON.stringify({
+            [root.tagName]: xmlNodeToObject(root)
+          }, null, 2);
+
+          setResult("XML converted to JSON. Attributes use @ prefixes and text mixed with children uses #text.");
+        }, true);
+
+        addCopyButton(row, output, "Copy JSON");
+
+        addButton(row, "Download JSON", function () {
+          if (!output.value) return setResult("Convert XML first.", true);
+          downloadText("emerald-world-converted.json", output.value, "application/json;charset=utf-8");
+        });
+
+        showResult(p, "XML attributes become @ keys. Repeated child elements become arrays.");
+      }
+
+      // 84. Image to Data URL Converter
+      if (tool.id === "image-dataurl-84") {
+        const file = field("Choose image", node("input", {
+          id: "ew84-image",
+          type: "file",
+          accept: "image/*"
+        }));
+
+        const output = field("Image Data URL", textArea("ew84-data-out", ""));
+        output.rows = 7;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const preview = node("img", {
+          alt: "Image preview",
+          style: "display:none;max-width:100%;max-height:260px;margin-top:12px;border-radius:10px"
+        });
+        p.appendChild(preview);
+
+        const row = buttons();
+
+        addButton(row, "Convert Image", function () {
+          const selected = file.files && file.files[0];
+          if (!selected) return setResult("Choose an image first.", true);
+
+          if (!selected.type.startsWith("image/")) {
+            return setResult("Please choose a valid image file.", true);
+          }
+
+          if (selected.size > 15 * 1024 * 1024) {
+            return setResult("Choose an image smaller than 15 MB.", true);
+          }
+
+          const reader = new FileReader();
+          reader.onload = function () {
+            output.value = String(reader.result);
+            preview.src = String(reader.result);
+            preview.style.display = "block";
+            setResult("Image converted to a Data URL.");
           };
-          show(result, JSON.stringify(output, null, 2));
-        } catch (error) {
-          show(result, "Error: " + error.message);
-        }
-      }, true);
+          reader.onerror = function () {
+            setResult("Could not read this image file.", true);
+          };
+          reader.readAsDataURL(selected);
+        }, true);
 
-      copyButton(actions, result);
-      addButton(actions, "Download JSON", () => {
-        download("converted.json", result.value, "application/json");
-      });
-    });
-    addCard(tool, panel);
-  }
+        addCopyButton(row, output, "Copy Data URL");
 
-  /* 84 — IMAGE TO DATA URL */
-  {
-    const tool = tools[3];
-    const panel = makePanel(tool, content => {
-      const fileInput = node("input", {
-        type: "file",
-        accept: "image/*"
-      });
-      makeField(content, "Choose image", fileInput);
+        addButton(row, "Clear", function () {
+          file.value = "";
+          output.value = "";
+          preview.removeAttribute("src");
+          preview.style.display = "none";
+          setResult("Choose an image to get started.");
+        });
 
-      const result = addResult(content);
-      const actions = addActions(content);
+        showResult(p, "The image is processed in your browser. Large images can create very long Data URLs.");
+      }
 
-      addButton(actions, "Convert Image", () => {
-        const file = fileInput.files && fileInput.files[0];
-        if (!file) {
-          show(result, "Please choose an image first.");
-          return;
-        }
+      // 85. Data URL to File Converter
+      if (tool.id === "dataurl-file-85") {
+        const input = field("Paste Data URL", textArea("ew85-data-in", ""));
+        input.rows = 8;
+        input.placeholder = "data:text/plain;base64,SGVsbG8gd29ybGQh";
 
-        if (!file.type.startsWith("image/")) {
-          show(result, "Please choose a valid image file.");
-          return;
-        }
+        const filename = field("Output filename", textInput("ew85-filename", "downloaded-file.txt"));
+        const info = node("div", {className:"ew75-output"});
+        info.textContent = "File details will appear here.";
+        p.appendChild(info);
 
-        const reader = new FileReader();
-        reader.onload = () => show(result, String(reader.result));
-        reader.onerror = () => show(result, "Could not read this file.");
-        reader.readAsDataURL(file);
-      }, true);
+        let decodedBlob = null;
 
-      copyButton(actions, result);
-      addButton(actions, "Download Text", () => {
-        download("image-data-url.txt", result.value, "text/plain;charset=utf-8");
-      });
-    });
-    addCard(tool, panel);
-  }
-
-  /* 85 — DATA URL TO FILE */
-  {
-    const tool = tools[4];
-    const panel = makePanel(tool, content => {
-      const input = addInput(
-        content,
-        "ew85-data-url-input",
-        "Paste a data URL such as data:text/plain;base64,SGVsbG8="
-      );
-      const filename = node("input", {
-        type: "text",
-        value: "decoded-file"
-      });
-      makeField(content, "Output filename", filename);
-
-      const result = addResult(content);
-      const actions = addActions(content);
-
-      let decodedBlob = null;
-      let suggestedExtension = "bin";
-
-      addButton(actions, "Decode Data URL", () => {
-        try {
-          const match = input.value.trim().match(
-            /^data:([^,]*?),(.*)$/s
-          );
-          if (!match) throw new Error("This is not a valid data URL.");
+        function decodeDataURL(value) {
+          const match = value.match(/^data:([^,]*?),(.*)$/s);
+          if (!match) throw new Error("This does not look like a valid Data URL.");
 
           const metadata = match[1];
-          const data = match[2];
+          const payload = match[2];
           const isBase64 = /;base64/i.test(metadata);
-          const mime = metadata.split(";")[0] || "text/plain";
+          const mime = metadata.replace(/;base64/i, "") || "text/plain";
 
           let bytes;
+
           if (isBase64) {
-            const binary = atob(data.replace(/\s/g, ""));
-            bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+            const cleaned = payload.replace(/\s/g, "");
+            if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleaned)) {
+              throw new Error("Invalid Base64 data.");
+            }
+
+            let binary;
+            try {
+              binary = atob(cleaned);
+            } catch (_) {
+              throw new Error("Could not decode Base64 data.");
+            }
+
+            bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              bytes[i] = binary.charCodeAt(i);
+            }
           } else {
-            const decoded = decodeURIComponent(data);
+            let decoded;
+            try {
+              decoded = decodeURIComponent(payload);
+            } catch (_) {
+              throw new Error("Invalid URL-encoded data.");
+            }
             bytes = new TextEncoder().encode(decoded);
           }
 
-          decodedBlob = new Blob([bytes], { type: mime });
-
-          const extensionMap = {
-            "text/plain": "txt",
-            "text/html": "html",
-            "text/css": "css",
-            "text/csv": "csv",
-            "application/json": "json",
-            "application/pdf": "pdf",
-            "image/png": "png",
-            "image/jpeg": "jpg",
-            "image/gif": "gif",
-            "image/webp": "webp",
-            "image/svg+xml": "svg"
-          };
-
-          suggestedExtension = extensionMap[mime] || "bin";
-          show(
-            result,
-            "Decoded successfully!\n" +
-            "MIME type: " + mime + "\n" +
-            "Size: " + decodedBlob.size + " bytes\n" +
-            "Suggested extension: ." + suggestedExtension
-          );
-        } catch (error) {
-          decodedBlob = null;
-          show(result, "Error: " + error.message);
-        }
-      }, true);
-
-      addButton(actions, "Download File", () => {
-        if (!decodedBlob) {
-          show(result, "Decode a valid data URL before downloading.");
-          return;
+          return new Blob([bytes], {type:mime});
         }
 
-        const safeName = filename.value.trim().replace(/[\\/:*?"<>|]/g, "_")
-          || "decoded-file";
-        const finalName = /\.[a-z0-9]{1,8}$/i.test(safeName)
-          ? safeName
-          : safeName + "." + suggestedExtension;
+        const row = buttons();
 
-        const url = URL.createObjectURL(decodedBlob);
-        const link = node("a", {
-          href: url,
-          download: finalName
+        addButton(row, "Decode Data URL", function () {
+          try {
+            if (!input.value.trim()) return setResult("Paste a Data URL first.", true);
+            decodedBlob = decodeDataURL(input.value.trim());
+
+            const size = decodedBlob.size;
+            const readableSize = size < 1024
+              ? size + " bytes"
+              : (size / 1024).toFixed(2) + " KB";
+
+            info.textContent = "MIME type: " + (decodedBlob.type || "unknown") +
+              "\nFile size: " + readableSize;
+
+            setResult("Data URL decoded successfully. You can now download the file.");
+          } catch (e) {
+            decodedBlob = null;
+            info.textContent = "File details will appear here.";
+            setResult(e.message || "Could not decode the Data URL.", true);
+          }
+        }, true);
+
+        addButton(row, "Download File", function () {
+          if (!decodedBlob) return setResult("Decode a valid Data URL first.", true);
+
+          let name = filename.value.trim() || "downloaded-file";
+          name = name.replace(/[\\/:*?"<>|]/g, "_");
+
+          const url = URL.createObjectURL(decodedBlob);
+          const a = node("a", {
+            href: url,
+            download: name
+          });
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+          setResult("Download started.");
         });
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }, true);
-    });
-    addCard(tool, panel);
-  }
 
-  /* Mark this batch for easier debugging. */
-  const marker = node("span", {
-    id: "ew-tools-81-85-loaded"
-  });
-  marker.hidden = true;
-  document.body.appendChild(marker);
-})();
+        addButton(row, "Clear", function () {
+          input.value = "";
+          filename.value = "downloaded-file.txt";
+          decodedBlob = null;
+          info.textContent = "File details will appear here.";
+          setResult("Paste a Data URL to get started.");
+        });
+
+        showResult(p, "Only decode Data URLs from sources you trust. The file is created locally in your browser.");
+      }
+    });
+  }
 
   const guard = node("span", {id:"ew5-tools-71-75-loaded"});
   guard.hidden = true;
