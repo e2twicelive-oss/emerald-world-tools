@@ -3765,5 +3765,759 @@ const $ = (s,p=document) => p.querySelector(s);
 })();
 </script>
 
+<script>
+(function () {
+  "use strict";
+
+  if (document.getElementById("ew5-tools-71-75-loaded")) return;
+
+  const grid = document.getElementById("grid");
+  if (!grid) {
+    console.error("Emerald World: #grid was not found.");
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "ew5-tools-71-75-style";
+  style.textContent = `
+    .ew75-panel {
+      display:none;
+      box-sizing:border-box;
+      width:min(850px, calc(100% - 24px));
+      margin:24px auto;
+      padding:22px;
+      border:1px solid var(--border-color, var(--border, #d9d9d9));
+      border-radius:16px;
+      background:var(--card-bg, var(--card-background, var(--surface, var(--background, inherit))));
+      color:var(--text-color, var(--text, inherit));
+      box-shadow:0 5px 22px rgba(0,0,0,.07);
+    }
+    .ew75-panel * { box-sizing:border-box; }
+    .ew75-panel h2 { margin:0 0 8px; }
+    .ew75-panel .ew75-description { margin:0 0 18px; opacity:.78; }
+    .ew75-panel .ew75-field { margin:14px 0; }
+    .ew75-panel label { display:block; margin-bottom:6px; font-weight:600; }
+    .ew75-panel input:not([type=checkbox]):not([type=radio]),
+    .ew75-panel textarea,
+    .ew75-panel select {
+      width:100%;
+      max-width:100%;
+      padding:11px 12px;
+      border:1px solid var(--border-color, #bfc5cc);
+      border-radius:9px;
+      font:inherit;
+      color:inherit;
+      background:var(--input-bg, var(--card-bg, transparent));
+    }
+    .ew75-panel textarea { min-height:125px; resize:vertical; }
+    .ew75-panel .ew75-actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:9px;
+      margin-top:14px;
+    }
+    .ew75-panel .ew75-result {
+      margin-top:16px;
+      padding:13px;
+      border:1px solid var(--border-color, rgba(128,128,128,.2));
+      border-radius:10px;
+      background:var(--result-bg, rgba(128,128,128,.09));
+      white-space:pre-wrap;
+      overflow-wrap:anywhere;
+    }
+    .ew75-panel .ew75-output {
+      display:block;
+      width:100%;
+      min-height:130px;
+      margin-top:10px;
+      font-family:monospace;
+      white-space:pre;
+    }
+    .ew75-panel .ew75-error { color:#e05252; }
+    .ew75-panel .ew75-close { float:right; }
+    .ew75-panel .ew75-muted { opacity:.75; font-size:.9em; }
+    .ew75-panel .ew75-check {
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .ew75-panel .ew75-check label { margin:0; }
+    .ew75-panel .ew75-check input { width:auto; }
+    .ew75-panel .ew75-ascii {
+      font-family:monospace;
+      white-space:pre;
+      overflow:auto;
+      line-height:1.4;
+    }
+  `;
+  document.head.appendChild(style);
+
+  const tools = [
+    {
+      id:"json-csv", number:71,
+      name:"JSON to CSV Converter",
+      category:"Converters",
+      icon:"📊",
+      keywords:"json csv spreadsheet convert export",
+      description:"Convert JSON arrays into CSV data you can copy or download."
+    },
+    {
+      id:"csv-html", number:72,
+      name:"CSV to HTML Table",
+      category:"Converters",
+      icon:"📋",
+      keywords:"csv html table spreadsheet convert",
+      description:"Turn CSV data into a clean HTML table with a copy option."
+    },
+    {
+      id:"date-add", number:73,
+      name:"Date Add/Subtract Calculator",
+      category:"Calculators",
+      icon:"📅",
+      keywords:"date add subtract days weeks months years",
+      description:"Calculate a future or past date by adding or subtracting time."
+    },
+    {
+      id:"binary-art", number:74,
+      name:"Text to ASCII Binary Art",
+      category:"Generators",
+      icon:"🔣",
+      keywords:"text binary art visual pattern 0 1",
+      description:"Turn text into a visual pattern of binary digits."
+    },
+    {
+      id:"team-generator", number:75,
+      name:"Team Generator",
+      category:"Generators",
+      icon:"👥",
+      keywords:"random team split names groups people",
+      description:"Randomly divide a list of names into teams."
+    }
+  ];
+
+  function node(tag, attrs, text) {
+    const n = document.createElement(tag);
+    Object.entries(attrs || {}).forEach(function (entry) {
+      const key = entry[0], value = entry[1];
+      if (key === "className") n.className = value;
+      else n.setAttribute(key, value);
+    });
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+
+  function makeField(parent, labelText, control) {
+    const wrap = node("div", {className:"ew75-field"});
+    const label = node("label", {});
+    label.textContent = labelText;
+    if (control.id) label.htmlFor = control.id;
+    wrap.append(label, control);
+    parent.appendChild(wrap);
+    return control;
+  }
+
+  function textInput(id, value, type) {
+    const input = node("input", {id:id, type:type || "text"});
+    if (value !== undefined) input.value = value;
+    return input;
+  }
+
+  function textArea(id, placeholder) {
+    return node("textarea", {
+      id:id,
+      placeholder:placeholder || ""
+    });
+  }
+
+  function actionRow(parent) {
+    const row = node("div", {className:"ew75-actions"});
+    parent.appendChild(row);
+    return row;
+  }
+
+  function addButton(parent, label, fn, primary) {
+    const b = node("button", {
+      type:"button",
+      className:primary ? "btn primary" : "btn"
+    }, label);
+    b.addEventListener("click", fn);
+    parent.appendChild(b);
+    return b;
+  }
+
+  function showResult(parent, message, error) {
+    let r = parent.querySelector(".ew75-result");
+    if (!r) {
+      r = node("div", {className:"ew75-result", role:"status"});
+      parent.appendChild(r);
+    }
+    r.classList.toggle("ew75-error", !!error);
+    r.textContent = message;
+  }
+
+  function setOutput(parent, value) {
+    const output = parent.querySelector(".ew75-output");
+    if (output) output.value = value;
+  }
+
+  function addCopyButton(parent, output) {
+    addButton(parent, "Copy Result", async function () {
+      if (!output.value) {
+        showResult(parent, "There is no result to copy yet.", true);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(output.value);
+        showResult(parent, "Copied to clipboard!");
+      } catch (_) {
+        output.focus();
+        output.select();
+        showResult(parent, "Press Ctrl+C to copy the selected result.");
+      }
+    });
+  }
+
+  function downloadText(filename, content, mime) {
+    const blob = new Blob([content], {type:mime || "text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = node("a", {href:url, download:filename});
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  const panels = {};
+
+  tools.forEach(function (tool) {
+    const card = node("article", {
+      className:"card",
+      "data-category":tool.category,
+      "data-keywords":(tool.name + " " + tool.keywords).toLowerCase()
+    });
+
+    card.appendChild(node("div", {className:"card-icon"}, tool.icon));
+    card.appendChild(node("h3", {}, tool.name));
+    card.appendChild(node("p", {className:"card-description"}, tool.description));
+    card.appendChild(node("span", {className:"tag"}, tool.category));
+
+    const openButton = node("button", {
+      type:"button",
+      className:"btn primary"
+    }, "Open Tool →");
+    card.appendChild(openButton);
+
+    const panel = node("section", {
+      id:"ew75-panel-" + tool.id,
+      className:"tool-panel ew75-panel",
+      "aria-label":tool.name
+    });
+
+    const close = node("button", {
+      type:"button",
+      className:"btn ew75-close",
+      "aria-label":"Close tool"
+    }, "✕ Close");
+    close.addEventListener("click", function () {
+      panel.style.display = "none";
+    });
+
+    panel.append(
+      close,
+      node("h2", {}, tool.icon + " " + tool.name),
+      node("p", {className:"ew75-description"}, tool.description)
+    );
+
+    const content = node("div", {className:"ew75-content"});
+    panel.appendChild(content);
+    document.body.appendChild(panel);
+    panels[tool.id] = content;
+
+    function open() {
+      document.querySelectorAll(".ew75-panel").forEach(function (p) {
+        p.style.display = "none";
+      });
+      panel.style.display = "block";
+      panel.scrollIntoView({behavior:"smooth", block:"start"});
+    }
+
+    openButton.addEventListener("click", function (event) {
+      event.stopPropagation();
+      open();
+    });
+    grid.appendChild(card);
+  });
+
+  // 71. JSON to CSV Converter
+  {
+    const p = panels["json-csv"];
+    const source = textArea("ew75-json-input",
+      'Paste a JSON array, e.g. [{"name":"Alex","age":20},{"name":"Sam","age":21}]');
+    makeField(p, "JSON input", source);
+
+    const output = textArea("ew75-json-csv-output", "");
+    output.classList.add("ew75-output");
+    output.readOnly = true;
+    makeField(p, "CSV output", output);
+
+    let lastCsv = "";
+
+    function csvCell(value) {
+      let s;
+      if (value === null || value === undefined) s = "";
+      else if (typeof value === "object") s = JSON.stringify(value);
+      else s = String(value);
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+
+    const row = actionRow(p);
+    addButton(row, "Convert to CSV", function () {
+      try {
+        const data = JSON.parse(source.value);
+        if (!Array.isArray(data)) {
+          throw new Error("Please provide a JSON array of objects.");
+        }
+        if (data.length === 0) {
+          throw new Error("The JSON array is empty.");
+        }
+        if (data.some(item => item === null ||
+            typeof item !== "object" || Array.isArray(item))) {
+          throw new Error("Each array item must be a JSON object.");
+        }
+
+        const headers = [];
+        data.forEach(function (item) {
+          Object.keys(item).forEach(function (key) {
+            if (!headers.includes(key)) headers.push(key);
+          });
+        });
+
+        if (!headers.length) {
+          throw new Error("No object properties were found.");
+        }
+
+        lastCsv = [
+          headers.map(csvCell).join(","),
+          ...data.map(function (item) {
+            return headers.map(function (key) {
+              return csvCell(item[key]);
+            }).join(",");
+          })
+        ].join("\r\n");
+
+        output.value = lastCsv;
+        showResult(p, "Converted " + data.length + " records and " +
+          headers.length + " columns.");
+      } catch (err) {
+        output.value = "";
+        lastCsv = "";
+        showResult(p, "Conversion failed: " + err.message, true);
+      }
+    }, true);
+
+    addButton(row, "Download CSV", function () {
+      if (!lastCsv) {
+        showResult(p, "Convert valid JSON first.", true);
+        return;
+      }
+      downloadText("emerald-world.csv", "\uFEFF" + lastCsv, "text/csv;charset=utf-8");
+    });
+    addButton(row, "Clear", function () {
+      source.value = "";
+      output.value = "";
+      lastCsv = "";
+      showResult(p, "Paste JSON to get started.");
+    });
+    addCopyButton(p, output);
+    showResult(p, "CSV output will appear here.");
+  }
+
+  // CSV parser: supports quoted cells, escaped quotes and newlines in cells.
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], cell = "", quoted = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+
+      if (quoted) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') {
+            cell += '"';
+            i++;
+          } else {
+            quoted = false;
+          }
+        } else {
+          cell += ch;
+        }
+      } else if (ch === '"' && cell === "") {
+        quoted = true;
+      } else if (ch === ",") {
+        row.push(cell);
+        cell = "";
+      } else if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(cell);
+        if (row.some(v => v !== "")) rows.push(row);
+        row = [];
+        cell = "";
+      } else {
+        cell += ch;
+      }
+    }
+
+    if (quoted) throw new Error("A quoted CSV field was not closed.");
+    row.push(cell);
+    if (row.some(v => v !== "")) rows.push(row);
+    return rows;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  // 72. CSV to HTML Table
+  {
+    const p = panels["csv-html"];
+    const source = textArea("ew75-csv-input",
+      'Paste CSV here, e.g.\nName,Age\nAlex,20\nSam,21');
+    makeField(p, "CSV input", source);
+
+    const output = textArea("ew75-csv-html-output", "");
+    output.classList.add("ew75-output");
+    output.readOnly = true;
+    makeField(p, "HTML table output", output);
+
+    let lastHtml = "";
+
+    const row = actionRow(p);
+    addButton(row, "Convert to HTML", function () {
+      try {
+        if (!source.value.trim()) throw new Error("Please paste CSV data first.");
+        const rows = parseCsv(source.value);
+        if (!rows.length) throw new Error("No CSV rows were found.");
+
+        const cols = Math.max(...rows.map(r => r.length));
+        const normalized = rows.map(r =>
+          r.concat(Array(Math.max(0, cols - r.length)).fill(""))
+        );
+
+        const head = normalized[0];
+        const body = normalized.slice(1);
+
+        lastHtml =
+          '<table>\n<thead>\n<tr>' +
+          head.map(v => "<th>" + escapeHtml(v) + "</th>").join("") +
+          "</tr>\n</thead>\n<tbody>\n" +
+          body.map(function (r) {
+            return "<tr>" +
+              r.map(v => "<td>" + escapeHtml(v) + "</td>").join("") +
+              "</tr>";
+          }).join("\n") +
+          "\n</tbody>\n</table>";
+
+        output.value = lastHtml;
+        showResult(p, "Created a table with " + head.length +
+          " columns and " + body.length + " data rows.");
+      } catch (err) {
+        lastHtml = "";
+        output.value = "";
+        showResult(p, "Conversion failed: " + err.message, true);
+      }
+    }, true);
+
+    addButton(row, "Download HTML", function () {
+      if (!lastHtml) {
+        showResult(p, "Convert valid CSV first.", true);
+        return;
+      }
+      const doc = "<!doctype html>\n<html><head><meta charset=\"utf-8\">" +
+        "<title>CSV Table</title></head><body>\n" + lastHtml +
+        "\n</body></html>";
+      downloadText("emerald-world-table.html", doc, "text/html;charset=utf-8");
+    });
+
+    addButton(row, "Clear", function () {
+      source.value = "";
+      output.value = "";
+      lastHtml = "";
+      showResult(p, "Paste CSV to get started.");
+    });
+    addCopyButton(p, output);
+    showResult(p, "The generated HTML will appear here.");
+  }
+
+  // 73. Date Add/Subtract Calculator
+  {
+    const p = panels["date-add"];
+    const date = textInput("ew75-date-start", "", "date");
+    const amount = textInput("ew75-date-amount", "7", "number");
+    amount.step = "1";
+    const unit = node("select", {id:"ew75-date-unit"});
+    [
+      ["days", "Days"],
+      ["weeks", "Weeks"],
+      ["months", "Months"],
+      ["years", "Years"]
+    ].forEach(function (option) {
+      unit.appendChild(node("option", {value:option[0]}, option[1]));
+    });
+
+    const operation = node("select", {id:"ew75-date-operation"});
+    operation.append(
+      node("option", {value:"add"}, "Add"),
+      node("option", {value:"subtract"}, "Subtract")
+    );
+
+    makeField(p, "Starting date", date);
+    makeField(p, "Operation", operation);
+    makeField(p, "Amount", amount);
+    makeField(p, "Unit", unit);
+
+    const row = actionRow(p);
+    addButton(row, "Calculate Date", function () {
+      if (!date.value || amount.value.trim() === "") {
+        showResult(p, "Choose a date and enter an amount.", true);
+        return;
+      }
+
+      const n = Number(amount.value);
+      if (!Number.isSafeInteger(n) || n < 0 || n > 100000) {
+        showResult(p, "Enter a whole number between 0 and 100000.", true);
+        return;
+      }
+
+      const parts = date.value.split("-").map(Number);
+      const original = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+      const sign = operation.value === "add" ? 1 : -1;
+      const value = n * sign;
+      const resultDate = new Date(original);
+
+      if (unit.value === "days") {
+        resultDate.setUTCDate(resultDate.getUTCDate() + value);
+      } else if (unit.value === "weeks") {
+        resultDate.setUTCDate(resultDate.getUTCDate() + value * 7);
+      } else if (unit.value === "months") {
+        const day = resultDate.getUTCDate();
+        resultDate.setUTCDate(1);
+        resultDate.setUTCMonth(resultDate.getUTCMonth() + value);
+        const lastDay = new Date(Date.UTC(
+          resultDate.getUTCFullYear(),
+          resultDate.getUTCMonth() + 1, 0
+        )).getUTCDate();
+        resultDate.setUTCDate(Math.min(day, lastDay));
+      } else {
+        const month = resultDate.getUTCMonth();
+        const day = resultDate.getUTCDate();
+        resultDate.setUTCDate(1);
+        resultDate.setUTCFullYear(resultDate.getUTCFullYear() + value);
+        resultDate.setUTCMonth(month);
+        const lastDay = new Date(Date.UTC(
+          resultDate.getUTCFullYear(),
+          resultDate.getUTCMonth() + 1, 0
+        )).getUTCDate();
+        resultDate.setUTCDate(Math.min(day, lastDay));
+      }
+
+      if (Number.isNaN(resultDate.getTime())) {
+        showResult(p, "Unable to calculate that date.", true);
+        return;
+      }
+
+      const yyyy = resultDate.getUTCFullYear();
+      const mm = String(resultDate.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(resultDate.getUTCDate()).padStart(2, "0");
+      const formatted = yyyy + "-" + mm + "-" + dd;
+      showResult(p, "Result date: " + formatted + "\n" +
+        resultDate.toLocaleDateString(undefined, {
+          timeZone:"UTC", weekday:"long", year:"numeric",
+          month:"long", day:"numeric"
+        }));
+    }, true);
+
+    addButton(row, "Use Today", function () {
+      const now = new Date();
+      date.value = now.getFullYear() + "-" +
+        String(now.getMonth() + 1).padStart(2, "0") + "-" +
+        String(now.getDate()).padStart(2, "0");
+      showResult(p, "Today's date has been selected.");
+    });
+    showResult(p, "Choose a date, operation, amount and unit.");
+  }
+
+  // 74. Text to ASCII Binary Art
+  {
+    const p = panels["binary-art"];
+    const source = textArea("ew75-art-input", "Type a short message...");
+    makeField(p, "Your text", source);
+
+    const mode = node("select", {id:"ew75-art-mode"});
+    mode.append(
+      node("option", {value:"blocks"}, "Block pattern"),
+      node("option", {value:"digits"}, "Binary digits")
+    );
+    makeField(p, "Art style", mode);
+
+    const output = textArea("ew75-art-output", "");
+    output.classList.add("ew75-output", "ew75-ascii");
+    output.readOnly = true;
+    makeField(p, "Generated binary art", output);
+
+    const row = actionRow(p);
+    addButton(row, "Generate Art", function () {
+      if (!source.value) {
+        showResult(p, "Enter some text first.", true);
+        return;
+      }
+      if (source.value.length > 500) {
+        showResult(p, "Please keep the text under 500 characters.", true);
+        return;
+      }
+
+      const bits = Array.from(source.value).map(function (char) {
+        const code = char.codePointAt(0);
+        return code.toString(2).padStart(8, "0");
+      });
+
+      const lines = [];
+      if (mode.value === "digits") {
+        lines.push(bits.join(" "));
+      } else {
+        bits.forEach(function (binary) {
+          lines.push(Array.from(binary).map(function (bit) {
+            return bit === "1" ? "██" : "░░";
+          }).join(""));
+        });
+      }
+
+      output.value = lines.join("\n");
+      showResult(p, "Created a visual pattern from " +
+        Array.from(source.value).length + " characters. " +
+        "This uses each character's binary code point.");
+    }, true);
+
+    addButton(row, "Download TXT", function () {
+      if (!output.value) {
+        showResult(p, "Generate the art first.", true);
+        return;
+      }
+      downloadText("emerald-world-binary-art.txt", output.value);
+    });
+
+    addButton(row, "Clear", function () {
+      source.value = "";
+      output.value = "";
+      showResult(p, "Enter text to create binary art.");
+    });
+    addCopyButton(p, output);
+    showResult(p, "Your binary art will appear here.");
+  }
+
+  // 75. Team Generator
+  {
+    const p = panels["team-generator"].content;
+    const names = textArea("ew75-team-names",
+      "Enter one name per line:\nAlex\nSam\nJordan\nTaylor");
+    makeField(p, "Names (one per line)", names);
+
+    const size = textInput("ew75-team-size", "2", "number");
+    size.min = "1";
+    size.step = "1";
+    makeField(p, "People per team", size);
+
+    const shuffle = node("input", {
+      type:"checkbox",
+      id:"ew75-team-shuffle"
+    });
+    shuffle.checked = true;
+    const checkWrap = node("div", {className:"ew75-field ew75-check"});
+    const checkLabel = node("label", {});
+    checkLabel.htmlFor = shuffle.id;
+    checkLabel.textContent = "Shuffle names randomly before splitting";
+    checkWrap.append(shuffle, checkLabel);
+    p.appendChild(checkWrap);
+
+    const output = textArea("ew75-team-output", "");
+    output.classList.add("ew75-output");
+    output.readOnly = true;
+    makeField(p, "Generated teams", output);
+
+    const row = actionRow(p);
+    addButton(row, "Generate Teams", function () {
+      let list = names.value.split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      if (list.length < 2) {
+        showResult(p, "Enter at least two names.", true);
+        return;
+      }
+      if (list.length > 500) {
+        showResult(p, "Please use 500 names or fewer.", true);
+        return;
+      }
+
+      const perTeam = Number(size.value);
+      if (!Number.isInteger(perTeam) || perTeam < 1 ||
+          perTeam > list.length) {
+        showResult(p, "Team size must be a whole number from 1 to " +
+          list.length + ".", true);
+        return;
+      }
+
+      if (shuffle.checked) {
+        for (let i = list.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [list[i], list[j]] = [list[j], list[i]];
+        }
+      }
+
+      const teamCount = Math.ceil(list.length / perTeam);
+      const teams = Array.from({length:teamCount}, () => []);
+
+      list.forEach(function (name, i) {
+        teams[i % teamCount].push(name);
+      });
+
+      output.value = teams.map(function (team, i) {
+        return "Team " + (i + 1) + "\n" +
+          team.map(name => "• " + name).join("\n");
+      }).join("\n\n");
+
+      showResult(p, "Created " + teams.length + " teams from " +
+        list.length + " people. Teams may differ by one person.");
+    }, true);
+
+    addButton(row, "Download TXT", function () {
+      if (!output.value) {
+        showResult(p, "Generate the teams first.", true);
+        return;
+      }
+      downloadText("emerald-world-teams.txt", output.value);
+    });
+
+    addButton(row, "Clear", function () {
+      names.value = "";
+      output.value = "";
+      size.value = "2";
+      shuffle.checked = true;
+      showResult(p, "Enter names to create teams.");
+    });
+    addCopyButton(p, output);
+    showResult(p, "Enter names and choose how many people should be on each team.");
+  }
+
+  const guard = node("span", {id:"ew5-tools-71-75-loaded"});
+  guard.hidden = true;
+  document.body.appendChild(guard);
+})();
+</script>
+
 </html>
 
