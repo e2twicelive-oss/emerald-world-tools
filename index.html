@@ -518,5 +518,100 @@ function buildTool(id,p){
 })();
 </script>
 
+<style>
+/* Emerald World Tools — visual upgrade */
+.ewx-panel {
+  background: linear-gradient(145deg,#101d16,#0b110e) !important;
+  border: 1px solid #246943 !important;
+  border-radius: 18px !important;
+  padding: 24px !important;
+  color: #e8fff0 !important;
+  box-shadow: 0 8px 30px #0005;
+}
+.ewx-panel h2 {
+  color: #66f0a0 !important;
+  font-size: 25px;
+}
+.ewx-panel label {
+  color: #bce8cc;
+  font-weight: 600;
+}
+.ewx-panel input,
+.ewx-panel select,
+.ewx-panel textarea {
+  background: #0a100d !important;
+  color: #effff4 !important;
+  border: 1px solid #285b3c !important;
+  border-radius: 10px !important;
+  padding: 13px !important;
+  font: inherit;
+}
+.ewx-panel button,
+.ewx-panel .ewx-output a {
+  display: inline-block;
+  background: linear-gradient(135deg,#16864b,#26bd70) !important;
+  color: white !important;
+  border: 1px solid #45db87 !important;
+  border-radius: 10px !important;
+  padding: 12px 17px !important;
+  margin: 8px 6px 4px 0;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+}
+.ewx-panel button:hover,
+.ewx-panel .ewx-output a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px #25d87555;
+}
+.ewx-panel .ewx-output {
+  background: #080f0b !important;
+  color: #9af4ba !important;
+  border: 1px solid #204b32;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  margin-top: 16px;
+  overflow-wrap: anywhere;
+}
+#grid .card:has(button[data-open="image-format"]),
+#grid .card:has(button[data-open="url-codec"]),
+#grid .card:has(button[data-open="html-entities"]),
+#grid .card:has(button[data-open="favicon-maker"]),
+#grid .card:has(button[data-open="base-converter"]) {
+  background: linear-gradient(145deg,#122219,#0b110e) !important;
+  border: 1px solid #286744 !important;
+  border-radius: 16px !important;
+  padding: 22px !important;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+#grid .card:has(button[data-open="image-format"]):hover,
+#grid .card:has(button[data-open="url-codec"]):hover,
+#grid .card:has(button[data-open="html-entities"]):hover,
+#grid .card:has(button[data-open="favicon-maker"]):hover,
+#grid .card:has(button[data-open="base-converter"]):hover {
+  transform: translateY(-4px);
+  border-color: #54e994 !important;
+  box-shadow: 0 8px 28px #20c76518;
+}
+#grid .card:has(button[data-open="image-format"]) h3::before {content:"🖼️  "; }
+#grid .card:has(button[data-open="url-codec"]) h3::before {content:"🔗  "; }
+#grid .card:has(button[data-open="html-entities"]) h3::before {content:"💻  "; }
+#grid .card:has(button[data-open="favicon-maker"]) h3::before {content:"🎨  "; }
+#grid .card:has(button[data-open="base-converter"]) h3::before {content:"🔢  "; }
+#grid .card:has(button[data-open="image-format"]) button,
+#grid .card:has(button[data-open="url-codec"]) button,
+#grid .card:has(button[data-open="html-entities"]) button,
+#grid .card:has(button[data-open="favicon-maker"]) button,
+#grid .card:has(button[data-open="base-converter"]) button {
+  background: linear-gradient(135deg,#16864b,#26bd70) !important;
+  color: white !important;
+  border: 1px solid #45db87 !important;
+  border-radius: 9px !important;
+  padding: 11px 16px !important;
+  cursor: pointer;
+}
+</style>
+
 </html>
 
