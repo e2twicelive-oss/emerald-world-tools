@@ -2424,7 +2424,7 @@ drawPomo();
   if (about && about.parentNode) about.parentNode.insertBefore(panels, about);
   else document.body.appendChild(panels);
 
-  const $ = (p,s) => p.querySelector(s);
+const $ = (s,p=document) => p.querySelector(s);
   const field = (p,label,tag,attrs={}) => {
     const l = document.createElement("label");
     l.textContent = label;
