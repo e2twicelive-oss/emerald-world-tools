@@ -5843,7 +5843,653 @@ const $ = (s,p=document) => p.querySelector(s);
       }
     });
   }
+// Emerald World Tools 94–98
+{
+  const newTools = [
+    {
+      id: "flashcard-maker-94",
+      name: "Flashcard Maker",
+      category: "Study",
+      icon: "🗂️",
+      keywords: "flashcards study revision questions answers memory",
+      description: "Create and review question-and-answer flashcards."
+    },
+    {
+      id: "quiz-maker-95",
+      name: "Quiz Maker",
+      category: "Study",
+      icon: "📝",
+      keywords: "quiz test exam mcq multiple choice study",
+      description: "Create multiple-choice quizzes and check your score."
+    },
+    {
+      id: "grade-calculator-96",
+      name: "Grade Calculator",
+      category: "Study",
+      icon: "🎓",
+      keywords: "grade marks percentage average school results",
+      description: "Calculate your total marks, percentage, and average."
+    },
+    {
+      id: "study-notes-97",
+      name: "Study Notes Organizer",
+      category: "Study",
+      icon: "📚",
+      keywords: "notes organizer subject topic revision study",
+      description: "Write, organize, search, and export study notes."
+    },
+    {
+      id: "exam-countdown-98",
+      name: "Exam Countdown Planner",
+      category: "Study",
+      icon: "⏳",
+      keywords: "exam countdown planner date days preparation",
+      description: "Calculate the days remaining until your exam."
+    }
+  ];
 
+  newTools.forEach(function (tool) {
+    if (document.querySelector('[data-ew-extra="' + tool.id + '"]')) return;
+
+    const card = node("article", {
+      className: "card",
+      "data-category": tool.category,
+      "data-keywords": (tool.name + " " + tool.keywords).toLowerCase(),
+      "data-ew-extra": tool.id
+    });
+
+    card.append(
+      node("div", {className:"card-icon"}, tool.icon),
+      node("h3", {}, tool.name),
+      node("p", {className:"card-description"}, tool.description),
+      node("span", {className:"tag"}, tool.category)
+    );
+
+    const openButton = node("button", {
+      type: "button",
+      className: "btn primary"
+    }, "Open Tool →");
+    card.appendChild(openButton);
+
+    const panel = node("section", {
+      id: "ew94-panel-" + tool.id,
+      className: "tool-panel ew75-panel",
+      "aria-label": tool.name
+    });
+
+    const close = node("button", {
+      type: "button",
+      className: "btn ew75-close"
+    }, "✕ Close");
+
+    close.addEventListener("click", function () {
+      panel.style.display = "none";
+    });
+
+    panel.append(
+      close,
+      node("h2", {}, tool.icon + " " + tool.name),
+      node("p", {className:"ew75-description"}, tool.description)
+    );
+
+    const p = node("div", {className:"ew75-content"});
+    panel.appendChild(p);
+    document.body.appendChild(panel);
+
+    openButton.addEventListener("click", function (event) {
+      event.stopPropagation();
+      document.querySelectorAll(".ew75-panel").forEach(function (item) {
+        item.style.display = "none";
+      });
+      panel.style.display = "block";
+      panel.scrollIntoView({behavior:"smooth", block:"start"});
+    });
+
+    grid.appendChild(card);
+
+    function field(label, control) {
+      makeField(p, label, control);
+      return control;
+    }
+
+    function buttons() {
+      return actionRow(p);
+    }
+
+    function setResult(message, error) {
+      showResult(p, message, error);
+    }
+
+    function addCopy(row, output, label) {
+      addButton(row, label || "Copy Output", async function () {
+        const value = typeof output === "string" ? output : output.value;
+        if (!value) return setResult("There is no output to copy.", true);
+
+        try {
+          await navigator.clipboard.writeText(value);
+          setResult("Copied to clipboard!");
+        } catch (_) {
+          if (output && typeof output !== "string" && output.select) {
+            output.focus();
+            output.select();
+            setResult("Press Ctrl+C to copy.");
+          } else {
+            setResult("Clipboard access failed. Please copy the text manually.", true);
+          }
+        }
+      });
+    }
+
+    // 94. FLASHCARD MAKER
+    if (tool.id === "flashcard-maker-94") {
+      const question = field("Question", textArea("ew94-question", ""));
+      question.placeholder = "Enter a question...";
+      question.rows = 3;
+
+      const answer = field("Answer", textArea("ew94-answer", ""));
+      answer.placeholder = "Enter the answer...";
+      answer.rows = 3;
+
+      const output = field("Flashcard", textArea("ew94-card", ""));
+      output.rows = 5;
+      output.readOnly = true;
+      output.classList.add("ew75-output");
+
+      let cards = [];
+      let current = 0;
+      let showingAnswer = false;
+
+      function renderCard() {
+        if (!cards.length) {
+          output.value = "";
+          return;
+        }
+
+        const item = cards[current];
+        output.value =
+          (showingAnswer ? "ANSWER\n" : "QUESTION\n") +
+          (showingAnswer ? item.answer : item.question) +
+          "\n\nCard " + (current + 1) + " of " + cards.length;
+      }
+
+      const row = buttons();
+
+      addButton(row, "Add Flashcard", function () {
+        if (!question.value.trim() || !answer.value.trim()) {
+          return setResult("Enter both a question and an answer.", true);
+        }
+
+        cards.push({
+          question: question.value.trim(),
+          answer: answer.value.trim()
+        });
+
+        current = cards.length - 1;
+        showingAnswer = false;
+        question.value = "";
+        answer.value = "";
+        renderCard();
+        setResult("Flashcard added! Total cards: " + cards.length);
+      });
+
+      addButton(row, "Reveal / Hide Answer", function () {
+        if (!cards.length) return setResult("Add a flashcard first.", true);
+        showingAnswer = !showingAnswer;
+        renderCard();
+      });
+
+      addButton(row, "Next Card", function () {
+        if (!cards.length) return setResult("Add a flashcard first.", true);
+        current = (current + 1) % cards.length;
+        showingAnswer = false;
+        renderCard();
+      });
+
+      addButton(row, "Copy All Cards", function () {
+        if (!cards.length) return setResult("There are no cards to copy.", true);
+        const text = cards.map(function (item, i) {
+          return (i + 1) + ". Question: " + item.question +
+            "\nAnswer: " + item.answer;
+        }).join("\n\n");
+
+        addCopy(row, text, "Copy Flashcards");
+        setResult("Your flashcards are ready to copy.");
+      });
+
+      addButton(row, "Clear All", function () {
+        cards = [];
+        current = 0;
+        showingAnswer = false;
+        renderCard();
+        setResult("All flashcards cleared.");
+      });
+
+      showResult(p, "Create your own revision cards. Cards stay available while this page remains open.");
+    }
+
+    // 95. QUIZ MAKER
+    if (tool.id === "quiz-maker-95") {
+      const question = field("Quiz question", textArea("ew95-question", ""));
+      question.rows = 3;
+      question.placeholder = "Enter your question...";
+
+      const options = [1, 2, 3, 4].map(function (n) {
+        return field("Option " + n, textInput("ew95-option-" + n, ""));
+      });
+
+      const correct = field(
+        "Correct option number (1–4)",
+        textInput("ew95-correct", "1")
+      );
+      correct.type = "number";
+      correct.min = "1";
+      correct.max = "4";
+
+      const output = field("Quiz question / result", textArea("ew95-output", ""));
+      output.rows = 5;
+      output.readOnly = true;
+      output.classList.add("ew75-output");
+
+      const playArea = node("div", {className:"ew75-content"});
+      p.appendChild(playArea);
+
+      let quiz = [];
+      let current = 0;
+      let score = 0;
+      let answered = false;
+
+      function renderQuiz() {
+        playArea.replaceChildren();
+        answered = false;
+
+        if (!quiz.length) {
+          output.value = "";
+          playArea.appendChild(node("p", {}, "Add questions to build your quiz."));
+          return;
+        }
+
+        if (current >= quiz.length) {
+          output.value = "Quiz complete!\nScore: " + score + " / " + quiz.length +
+            "\nPercentage: " + (score / quiz.length * 100).toFixed(1) + "%";
+
+          playArea.appendChild(node("h3", {}, "Quiz complete!"));
+          playArea.appendChild(node("p", {}, output.value));
+
+          const restart = node("button", {
+            type:"button",
+            className:"btn primary"
+          }, "Restart Quiz");
+
+          restart.addEventListener("click", function () {
+            current = 0;
+            score = 0;
+            renderQuiz();
+          });
+
+          playArea.appendChild(restart);
+          return;
+        }
+
+        const item = quiz[current];
+        playArea.appendChild(node("h3", {},
+          "Question " + (current + 1) + " of " + quiz.length
+        ));
+        playArea.appendChild(node("p", {}, item.question));
+
+        item.options.forEach(function (option, index) {
+          const choice = node("button", {
+            type:"button",
+            className:"btn"
+          }, (index + 1) + ". " + option);
+
+          choice.style.margin = "5px";
+          choice.addEventListener("click", function () {
+            if (answered) return;
+            answered = true;
+
+            const isCorrect = index === item.correct;
+            if (isCorrect) score++;
+
+            output.value = isCorrect
+              ? "Correct! 🎉"
+              : "Incorrect. Correct answer: " + item.options[item.correct];
+
+            showResult(playArea, output.value);
+
+            const next = node("button", {
+              type:"button",
+              className:"btn primary"
+            }, "Next Question");
+
+            next.addEventListener("click", function () {
+              current++;
+              renderQuiz();
+            });
+
+            playArea.appendChild(next);
+          });
+
+          playArea.appendChild(choice);
+        });
+      }
+
+      const row = buttons();
+
+      addButton(row, "Add Question", function () {
+        const q = question.value.trim();
+        const choices = options.map(function (item) {
+          return item.value.trim();
+        });
+        const n = Number(correct.value);
+
+        if (!q || choices.some(function (item) { return !item; })) {
+          return setResult("Enter the question and all four options.", true);
+        }
+
+        if (!Number.isInteger(n) || n < 1 || n > 4) {
+          return setResult("Correct option must be a number from 1 to 4.", true);
+        }
+
+        quiz.push({question:q, options:choices, correct:n - 1});
+        question.value = "";
+        options.forEach(function (item) { item.value = ""; });
+        correct.value = "1";
+        renderQuiz();
+        setResult("Question added. Total questions: " + quiz.length);
+      });
+
+      addButton(row, "Start / Restart Quiz", function () {
+        if (!quiz.length) return setResult("Add at least one question first.", true);
+        current = 0;
+        score = 0;
+        renderQuiz();
+      });
+
+      addButton(row, "Clear Quiz", function () {
+        quiz = [];
+        current = 0;
+        score = 0;
+        renderQuiz();
+        setResult("Quiz cleared.");
+      });
+
+      showResult(p, "Add questions and four answer options, then start your quiz.");
+    }
+
+    // 96. GRADE CALCULATOR
+    if (tool.id === "grade-calculator-96") {
+      const subjects = field("Subject marks", textArea("ew96-subjects", ""));
+      subjects.rows = 9;
+      subjects.placeholder =
+        "Physics: 85/100\nChemistry: 78/100\nMaths: 92/100";
+
+      const output = field("Grade calculation", textArea("ew96-output", ""));
+      output.rows = 7;
+      output.readOnly = true;
+      output.classList.add("ew75-output");
+
+      const row = buttons();
+
+      addButton(row, "Calculate Grades", function () {
+        const lines = subjects.value.split(/\r?\n/).filter(function (line) {
+          return line.trim();
+        });
+
+        if (!lines.length) return setResult("Enter subject marks first.", true);
+
+        let obtained = 0;
+        let maximum = 0;
+        let count = 0;
+        const details = [];
+
+        for (const line of lines) {
+          const match = line.match(/^(.*?):\s*(-?\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+
+          if (!match) {
+            return setResult(
+              'Invalid line: "' + line + '". Use Subject: marks/max, e.g. Physics: 85/100.',
+              true
+            );
+          }
+
+          const name = match[1].trim();
+          const got = Number(match[2]);
+          const total = Number(match[3]);
+
+          if (!name || got < 0 || total <= 0 || got > total) {
+            return setResult("Check the subject name and marks in: " + line, true);
+          }
+
+          obtained += got;
+          maximum += total;
+          count++;
+          details.push(name + ": " + got + "/" + total +
+            " (" + (got / total * 100).toFixed(2) + "%)");
+        }
+
+        const percentage = obtained / maximum * 100;
+        const average = obtained / count;
+
+        let grade = "F";
+        if (percentage >= 90) grade = "A+";
+        else if (percentage >= 80) grade = "A";
+        else if (percentage >= 70) grade = "B";
+        else if (percentage >= 60) grade = "C";
+        else if (percentage >= 50) grade = "D";
+        else if (percentage >= 40) grade = "E";
+
+        output.value =
+          "SUBJECT RESULTS\n" + details.join("\n") +
+          "\n\nTotal: " + obtained + "/" + maximum +
+          "\nPercentage: " + percentage.toFixed(2) + "%" +
+          "\nAverage percentage per subject: " +
+          (details.reduce(function (sum, line) {
+            const match = line.match(/\(([\d.]+)%\)/);
+            return sum + (match ? Number(match[1]) : 0);
+          }, 0) / count).toFixed(2) + "%" +
+          "\nEstimated grade: " + grade;
+
+        setResult("Calculation complete. Grade bands are illustrative, not official board rules.");
+      });
+
+      addCopy(row, output);
+
+      addButton(row, "Clear", function () {
+        subjects.value = "";
+        output.value = "";
+        setResult("Enter your marks to get started.");
+      });
+
+      showResult(p, "Enter one subject per line using the format Subject: marks/max.");
+    }
+
+    // 97. STUDY NOTES ORGANIZER
+    if (tool.id === "study-notes-97") {
+      const subject = field("Subject", textInput("ew97-subject", ""));
+      subject.placeholder = "e.g. Physics";
+
+      const topic = field("Topic / title", textInput("ew97-topic", ""));
+      topic.placeholder = "e.g. Electrochemistry";
+
+      const content = field("Study notes", textArea("ew97-notes", ""));
+      content.rows = 7;
+      content.placeholder = "Write your notes here...";
+
+      const search = field("Search saved notes", textInput("ew97-search", ""));
+      search.placeholder = "Search by subject, topic, or text...";
+
+      const list = node("div", {className:"ew75-content"});
+      p.appendChild(list);
+
+      let notes = [];
+
+      function renderNotes() {
+        list.replaceChildren();
+        const term = search.value.trim().toLowerCase();
+
+        const matches = notes.filter(function (item) {
+          return (item.subject + " " + item.topic + " " + item.content)
+            .toLowerCase().includes(term);
+        });
+
+        if (!matches.length) {
+          list.appendChild(node("p", {}, "No matching notes found."));
+          return;
+        }
+
+        matches.forEach(function (item) {
+          const box = node("article", {className:"card"});
+          box.append(
+            node("h3", {}, item.subject + " — " + item.topic),
+            node("p", {className:"card-description"}, item.content)
+          );
+
+          const copy = node("button", {
+            type:"button",
+            className:"btn primary"
+          }, "Copy Note");
+
+          copy.addEventListener("click", function () {
+            addCopy(actionRow(box), item.subject + " — " + item.topic +
+              "\n\n" + item.content, "Copy Note");
+          });
+
+          const remove = node("button", {
+            type:"button",
+            className:"btn"
+          }, "Delete");
+
+          remove.addEventListener("click", function () {
+            notes = notes.filter(function (note) { return note.id !== item.id; });
+            renderNotes();
+            setResult("Note deleted.");
+          });
+
+          box.append(copy, remove);
+          list.appendChild(box);
+        });
+      }
+
+      search.addEventListener("input", renderNotes);
+
+      const row = buttons();
+
+      addButton(row, "Save Note", function () {
+        if (!subject.value.trim() || !topic.value.trim() || !content.value.trim()) {
+          return setResult("Enter a subject, topic, and note content.", true);
+        }
+
+        notes.push({
+          id: Date.now() + Math.random(),
+          subject: subject.value.trim(),
+          topic: topic.value.trim(),
+          content: content.value.trim()
+        });
+
+        content.value = "";
+        renderNotes();
+        setResult("Note saved for this session.");
+      });
+
+      addButton(row, "Export Notes", function () {
+        if (!notes.length) return setResult("There are no notes to export.", true);
+
+        const text = notes.map(function (item) {
+          return item.subject + " — " + item.topic + "\n\n" + item.content;
+        }).join("\n\n--------------------\n\n");
+
+        downloadText(
+          "emerald-world-study-notes.txt",
+          text,
+          "text/plain;charset=utf-8"
+        );
+        setResult("Notes export started.");
+      });
+
+      addButton(row, "Clear All Notes", function () {
+        notes = [];
+        renderNotes();
+        setResult("All notes cleared.");
+      });
+
+      renderNotes();
+      showResult(p, "Notes remain available during this page session. Export them to keep a copy.");
+    }
+
+    // 98. EXAM COUNTDOWN PLANNER
+    if (tool.id === "exam-countdown-98") {
+      const exam = field("Exam name", textInput("ew98-exam", ""));
+      exam.placeholder = "e.g. Mathematics final exam";
+
+      const date = field("Exam date", textInput("ew98-date", ""));
+      date.type = "date";
+
+      const hours = field(
+        "Planned study hours per day",
+        textInput("ew98-hours", "2")
+      );
+      hours.type = "number";
+      hours.min = "0";
+      hours.step = "0.5";
+
+      const output = field("Countdown result", textArea("ew98-output", ""));
+      output.rows = 6;
+      output.readOnly = true;
+      output.classList.add("ew75-output");
+
+      const row = buttons();
+
+      addButton(row, "Calculate Countdown", function () {
+        if (!exam.value.trim() || !date.value) {
+          return setResult("Enter an exam name and date.", true);
+        }
+
+        if (hours.value.trim() === "" || !Number.isFinite(Number(hours.value)) ||
+            Number(hours.value) < 0) {
+          return setResult("Enter valid daily study hours.", true);
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const examDate = new Date(date.value + "T00:00:00");
+
+        if (Number.isNaN(examDate.getTime())) {
+          return setResult("Choose a valid exam date.", true);
+        }
+
+        const days = Math.round((examDate - today) / 86400000);
+
+        if (days < 0) {
+          output.value = exam.value.trim() + " was " + Math.abs(days) + " day(s) ago.";
+        } else if (days === 0) {
+          output.value = "Your exam is today! Good luck! 🍀";
+        } else {
+          output.value =
+            "Exam: " + exam.value.trim() +
+            "\nDays remaining: " + days +
+            "\nPlanned study time before exam day: " +
+            (days * Number(hours.value)).toFixed(1) + " hours." +
+            "\n\nTip: Divide your remaining topics across your available study days.";
+        }
+
+        setResult("Countdown calculated!");
+      });
+
+      addCopy(row, output);
+
+      addButton(row, "Clear", function () {
+        exam.value = "";
+        date.value = "";
+        hours.value = "2";
+        output.value = "";
+        setResult("Enter your exam details to get started.");
+      });
+
+      showResult(p, "Calculate your remaining preparation time and make a realistic study plan.");
+    }
+  });
+}
   const guard = node("span", {id:"ew5-tools-71-75-loaded"});
   guard.hidden = true;
   document.body.appendChild(guard);
