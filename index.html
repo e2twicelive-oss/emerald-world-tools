@@ -1,1 +1,373 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07110d">
+<meta name="description" content="Emerald World Tools — free online tools for text, calculations, coding and everyday tasks. No account required.">
+<title>Emerald World Tools | Free Online Tools</title>
+<style>
+:root{--bg:#07110d;--panel:#101e17;--panel2:#14271d;--green:#39e58c;--green2:#13b86a;--text:#effff5;--muted:#a0b9aa;--border:#254333}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;line-height:1.6}
+a{color:inherit;text-decoration:none}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+header{position:sticky;top:0;z-index:10;background:#07110df2;backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav{max-width:1150px;margin:auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+.brand{font-size:21px;font-weight:800;letter-spacing:-.6px}
+.brand span{color:var(--green)}
+.navlinks{display:flex;gap:18px;align-items:center;font-size:14px;color:var(--muted)}
+.navlinks a:hover{color:var(--green)}
+.hero{max-width:900px;margin:auto;padding:72px 20px 38px;text-align:center}
+.pill{display:inline-block;border:1px solid #286343;background:#0e2519;color:var(--green);border-radius:99px;padding:5px 13px;font-size:12px;font-weight:700}
+h1{font-size:clamp(36px,7vw,66px);line-height:1.08;letter-spacing:-2px;margin:20px 0}
+h1 span{color:var(--green)}
+.hero p{color:var(--muted);max-width:610px;margin:0 auto 24px;font-size:16px}
+.search{display:flex;gap:10px;max-width:650px;margin:26px auto 15px}
+.search input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:15px;color:var(--text);outline:none}
+.search input:focus,input:focus,textarea:focus,select:focus{border-color:var(--green)}
+.btn{border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:10px;padding:10px 15px;font-weight:700}
+.btn:hover{border-color:var(--green);color:var(--green)}
+.btn.primary{background:var(--green);border-color:var(--green);color:#04140b}
+.btn.primary:hover{background:#72f5ad}
+.hero-note{font-size:12px;color:var(--muted)}
+.wrap{max-width:1150px;margin:auto;padding:25px 20px 60px}
+.section-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:12px 0 18px}
+.section-head h2{font-size:25px;margin:0}
+.section-head p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.filter{background:var(--panel);border:1px solid var(--border);color:var(--muted);border-radius:99px;padding:7px 14px;font-size:13px}
+.filter.active,.filter:hover{background:#133b26;color:var(--green);border-color:#28764a}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:15px;padding:19px;display:flex;flex-direction:column;min-width:0;transition:transform .18s,border-color .18s}
+.card:hover{transform:translateY(-3px);border-color:#398258}
+.card-icon{width:43px;height:43px;display:grid;place-items:center;background:#173625;border-radius:12px;font-size:22px;margin-bottom:12px}
+.card h3{font-size:17px;margin:0 0 5px}
+.card p{color:var(--muted);font-size:13px;margin:0 0 15px;flex:1}
+.tag{color:var(--green);font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:700}
+.card .btn{width:100%;margin-top:4px}
+.tool-panel{margin-top:30px;background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:22px;scroll-margin-top:95px}
+.tool-panel h2{margin:0 0 4px;font-size:24px}
+.tool-panel>p{margin:0 0 20px;color:var(--muted);font-size:14px}
+.tool-content{max-width:700px}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
+.field{width:100%;background:#09150f;border:1px solid var(--border);border-radius:9px;color:var(--text);padding:11px 12px;min-width:0}
+textarea.field{min-height:110px;resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1;min-width:120px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.result{background:#09150f;border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:13px;overflow-wrap:anywhere;white-space:pre-wrap}
+.muted{color:var(--muted);font-size:13px}
+footer{border-top:1px solid var(--border);padding:30px 20px;text-align:center;color:var(--muted);font-size:13px}
+footer strong{color:var(--green)}
+#no-results{display:none;padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:12px}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding-top:50px}.navlinks{gap:10px}}
+@media(max-width:520px){.grid{grid-template-columns:1fr}.nav{padding:12px 14px}.brand{font-size:18px}.navlinks{font-size:12px;gap:9px}.hero{padding:44px 16px 25px}h1{letter-spacing:-1.2px}.search{flex-direction:column}.wrap{padding:18px 14px 40px}.tool-panel{padding:16px}}
+</style>
+</head>
+<body>
+<header>
+  <nav class="nav">
+    <a class="brand" href="#">💚 Emerald <span>Tools</span></a>
+    <div class="navlinks">
+      <a href="#tools">All Tools</a>
+      <a href="#categories">Categories</a>
+      <a href="#about">About</a>
+    </div>
+  </nav>
+</header>
+
+<section class="hero">
+  <span class="pill">✦ FREE FOREVER · NO ACCOUNT NEEDED</span>
+  <h1>Useful tools.<br><span>Zero cost.</span></h1>
+  <p>Simple, useful online tools for your everyday tasks. No subscriptions, no sign-ups — just open a tool and get things done.</p>
+  <div class="search">
+    <input id="search" type="search" placeholder="🔎 Search tools... e.g. JSON, GST, text" aria-label="Search tools">
+    <button class="btn primary" id="search-btn">Search</button>
+  </div>
+  <div class="hero-note">Free to use · Works in your browser · More tools coming</div>
+</section>
+
+<main class="wrap" id="tools">
+  <div class="section-head" id="categories">
+    <div><h2>Explore Tools 🧰</h2><p id="count">10 free tools available</p></div>
+  </div>
+  <div class="filters" id="filters">
+    <button class="filter active" data-category="All">All Tools</button>
+    <button class="filter" data-category="Text">Text</button>
+    <button class="filter" data-category="Calculators">Calculators</button>
+    <button class="filter" data-category="Developer">Developer</button>
+    <button class="filter" data-category="Generators">Generators</button>
+  </div>
+
+  <div class="grid" id="grid">
+    <article class="card" data-category="Text" data-keywords="word counter words characters sentences paragraphs writing text">
+      <div class="card-icon">📝</div><span class="tag">Text</span><h3>Word Counter</h3><p>Count words, characters, sentences and paragraphs in your text.</p><button class="btn primary" data-open="word">Open Tool →</button>
+    </article>
+    <article class="card" data-category="Text" data-keywords="case converter uppercase lowercase title sentence text">
+      <div class="card-icon">🔠</div><span class="tag">Text</span><h3>Text Case Converter</h3><p>Convert text to uppercase, lowercase, title case or sentence case.</p><button class="btn primary" data-open="case">Open Tool →</button>
+    </article>
+    <article class="card" data-category="Calculators" data-keywords="calculator math arithmetic add subtract multiply divide">
+      <div class="card-icon">🧮</div><span class="tag">Calculators</span><h3>Simple Calculator</h3><p>Calculate basic sums, differences, products and divisions.</p><button class="btn primary" data-open="calc">Open Tool →</button>
+    </article>
+    <article class="card" data-category="Generators" data-keywords="password generator random secure strong password">
+      <div class="card-icon">🔐</div><span class="tag">Generators</span><h3>Password Generator</h3><p>Generate random passwords with letters, numbers and symbols.</p><button class="btn primary" data-open="password">Open Tool →</button>
+    </article>
+    <article class="card" data-category="Developer" data-keywords="json formatter validator developer code data">
+      <div class="card-icon">{"{}"}</div><span class="tag">Developer</span><h3>JSON Formatter</h3><p>Format JSON data and check whether the syntax is valid.</p><button class="btn primary" data-open="json">Open Tool →</button>
+    </article>
+    <article class="card" data-category="Generators" data-keywords="css gradient generator background colors design web">
+      <div class="card-icon">🎨</div><span class="tag">Generators</span><h3>CSS Gradient Generator</h3><p>Choose two colors and create a CSS gradient to copy.</p><button class="btn primary" data-open="gradient">Open Tool →</button>
+    </article>
+    <article class="card" data-category="Calculators" data-keywords="gst calculator goods services tax india price tax">
+      <div class="card-icon">🇮🇳</div><span class="tag">Calculators</span><h3>GST Calculator</h3><p>Calculate GST amounts and prices with or without tax.</p><button class="btn primary" data-open="gst">Open Tool →</button>
+    </article>
+    <article class="card" data-category="Calculators" data-keywords="discount calculator sale percentage price savings">
+      <div class="card-icon">🏷️</div><span class="tag">Calculators</span><h3>Discount Calculator</h3><p>Find your discount amount and final sale price.</p><button class="btn primary" data-open="discount">Open Tool →</button>
+    </article>
+    <article class="card" data-category="Generators" data-keywords="random number generator lottery dice random">
+      <div class="card-icon">🎲</div><span class="tag">Generators</span><h3>Random Number Generator</h3><p>Generate a random whole number within your chosen range.</p><button class="btn primary" data-open="random">Open Tool →</button>
+    </article>
+    <article class="card" data-category="Developer" data-keywords="base64 encoder decoder text developer coding">
+      <div class="card-icon">💻</div><span class="tag">Developer</span><h3>Base64 Encoder / Decoder</h3><p>Encode text to Base64 or decode Base64 back to text.</p><button class="btn primary" data-open="base64">Open Tool →</button>
+    </article>
+  </div>
+  <div id="no-results">No matching tools found. Try a different search. 🔎</div>
+
+  <section class="tool-panel" id="panel-word">
+    <h2>📝 Word Counter</h2><p>Enter or paste text below to count its words and characters.</p>
+    <div class="tool-content"><label for="word-text">Your text</label><textarea class="field" id="word-text" placeholder="Start typing or paste your text..."></textarea><div class="result" id="word-result">Words: 0 · Characters: 0 · Sentences: 0 · Paragraphs: 0</div></div>
+  </section>
+
+  <section class="tool-panel" id="panel-case">
+    <h2>🔠 Text Case Converter</h2><p>Change text case instantly.</p>
+    <div class="tool-content"><label for="case-text">Your text</label><textarea class="field" id="case-text" placeholder="Enter text to convert..."></textarea><div class="actions"><button class="btn" data-case="upper">UPPERCASE</button><button class="btn" data-case="lower">lowercase</button><button class="btn" data-case="title">Title Case</button><button class="btn" data-case="sentence">Sentence case</button></div><div class="result" id="case-result">Your converted text will appear here.</div><button class="btn" id="copy-case">Copy Result</button></div>
+  </section>
+
+  <section class="tool-panel" id="panel-calc">
+    <h2>🧮 Simple Calculator</h2><p>Calculate two numbers using a basic operation.</p>
+    <div class="tool-content"><div class="row"><div><label for="calc-a">First number</label><input class="field" id="calc-a" type="number" value="12"></div><div><label for="calc-b">Second number</label><input class="field" id="calc-b" type="number" value="3"></div></div><label for="calc-op">Operation</label><select class="field" id="calc-op"><option value="+">Addition (+)</option><option value="-">Subtraction (−)</option><option value="*">Multiplication (×)</option><option value="/">Division (÷)</option></select><button class="btn primary" id="calc-go" style="margin-top:12px">Calculate</button><div class="result" id="calc-result">Result: 15</div></div>
+  </section>
+
+  <section class="tool-panel" id="panel-password">
+    <h2>🔐 Password Generator</h2><p>Generate a random password in your browser. Your password is not sent to a server.</p>
+    <div class="tool-content"><div class="row"><div><label for="pass-length">Password length (8–64)</label><input class="field" id="pass-length" type="number" min="8" max="64" value="16"></div><div><label for="pass-symbols">Include symbols?</label><select class="field" id="pass-symbols"><option value="yes">Yes</option><option value="no">No</option></select></div></div><button class="btn primary" id="pass-go" style="margin-top:12px">Generate Password</button><div class="result" id="pass-result">Your password will appear here.</div><button class="btn" id="pass-copy">Copy Password</button></div>
+  </section>
+
+  <section class="tool-panel" id="panel-json">
+    <h2>{"{}"} JSON Formatter</h2><p>Format JSON or check its syntax. Data stays in your browser.</p>
+    <div class="tool-content"><label for="json-input">JSON input</label><textarea class="field" id="json-input" placeholder='{"name":"Emerald World","free":true}'></textarea><div class="actions"><button class="btn primary" id="json-format">Format JSON</button><button class="btn" id="json-minify">Minify JSON</button></div><div class="result" id="json-result">Formatted JSON will appear here.</div><button class="btn" id="json-copy">Copy Result</button></div>
+  </section>
+
+  <section class="tool-panel" id="panel-gradient">
+    <h2>🎨 CSS Gradient Generator</h2><p>Choose colors, adjust the angle, and copy the CSS code.</p>
+    <div class="tool-content"><div class="row"><div><label for="grad-a">First color</label><input class="field" id="grad-a" type="color" value="#13b86a"></div><div><label for="grad-b">Second color</label><input class="field" id="grad-b" type="color" value="#07110d"></div></div><label for="grad-angle">Angle: <span id="grad-angle-label">135°</span></label><input id="grad-angle" class="field" type="range" min="0" max="360" value="135"><div id="grad-preview" style="height:120px;border-radius:12px;margin-top:12px;background:linear-gradient(135deg,#13b86a,#07110d)"></div><div class="result" id="grad-result"></div><button class="btn" id="grad-copy">Copy CSS</button></div>
+  </section>
+
+  <section class="tool-panel" id="panel-gst">
+    <h2>🇮🇳 GST Calculator</h2><p>Estimate a price with GST added or calculate the GST included in a price. Select the applicable rate for your transaction.</p>
+    <div class="tool-content"><label for="gst-price">Amount (₹)</label><input class="field" id="gst-price" type="number" min="0" step="0.01" value="1000"><div class="row"><div><label for="gst-rate">GST rate</label><select class="field" id="gst-rate"><option value="5">5%</option><option value="12">12%</option><option value="18" selected>18%</option><option value="28">28%</option><option value="0">0%</option></select></div><div><label for="gst-mode">Price type</label><select class="field" id="gst-mode"><option value="add">GST not included</option><option value="included">GST already included</option></select></div></div><button class="btn primary" id="gst-go" style="margin-top:12px">Calculate GST</button><div class="result" id="gst-result"></div><p class="muted">Illustrative calculation only. Applicable rates depend on the goods or services and current tax rules.</p></div>
+  </section>
+
+  <section class="tool-panel" id="panel-discount">
+    <h2>🏷️ Discount Calculator</h2><p>Calculate how much you save on a sale.</p>
+    <div class="tool-content"><div class="row"><div><label for="disc-price">Original price (₹)</label><input class="field" id="disc-price" type="number" min="0" value="2000"></div><div><label for="disc-percent">Discount (%)</label><input class="field" id="disc-percent" type="number" min="0" max="100" value="25"></div></div><button class="btn primary" id="disc-go" style="margin-top:12px">Calculate Discount</button><div class="result" id="disc-result"></div></div>
+  </section>
+
+  <section class="tool-panel" id="panel-random">
+    <h2>🎲 Random Number Generator</h2><p>Generate a random integer between your minimum and maximum.</p>
+    <div class="tool-content"><div class="row"><div><label for="rand-min">Minimum</label><input class="field" id="rand-min" type="number" value="1"></div><div><label for="rand-max">Maximum</label><input class="field" id="rand-max" type="number" value="100"></div></div><button class="btn primary" id="rand-go" style="margin-top:12px">Generate Number</button><div class="result" id="rand-result">Your number will appear here.</div></div>
+  </section>
+
+  <section class="tool-panel" id="panel-base64">
+    <h2>💻 Base64 Encoder / Decoder</h2><p>Convert text to Base64 and decode Base64 back to readable text. This is encoding, not encryption.</p>
+    <div class="tool-content"><label for="b64-input">Input</label><textarea class="field" id="b64-input" placeholder="Enter text or Base64..."></textarea><div class="actions"><button class="btn primary" id="b64-encode">Encode</button><button class="btn" id="b64-decode">Decode</button></div><div class="result" id="b64-result">Your result will appear here.</div><button class="btn" id="b64-copy">Copy Result</button></div>
+  </section>
+
+  <section class="tool-panel" id="about">
+    <h2>💚 About Emerald World Tools</h2>
+    <p>Emerald World Tools is part of the Emerald World project — a growing collection of free browser-based tools for everyday tasks, writing, calculations and web development.</p>
+    <p>Our goal is to keep useful tools accessible without subscriptions or account requirements. More tools will be added over time.</p>
+    <a class="btn" href="https://github.com/">Explore GitHub</a>
+  </section>
+</main>
+
+<footer>
+  <p><strong>💚 Emerald World Tools</strong></p>
+  <p>Free tools for everyone. Made for the Emerald World project.</p>
+  <p>Some tools process information only in your browser. Avoid entering sensitive information into any online tool unless you trust it.</p>
+  <p>© <span id="year"></span> Emerald World</p>
+</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+$("year").textContent=new Date().getFullYear();
+
+function showPanel(name){
+  const panel=$("panel-"+name);
+  if(!panel)return;
+  panel.scrollIntoView({behavior:"smooth",block:"start"});
+}
+document.querySelectorAll("[data-open]").forEach(button=>{
+  button.addEventListener("click",()=>showPanel(button.dataset.open));
+});
+
+let activeCategory="All";
+function filterTools(){
+  const query=$("search").value.trim().toLowerCase();
+  let count=0;
+  document.querySelectorAll("#grid .card").forEach(card=>{
+    const matchesCategory=activeCategory==="All"||card.dataset.category===activeCategory;
+    const haystack=(card.innerText+" "+card.dataset.keywords).toLowerCase();
+    const matchesSearch=!query||haystack.includes(query);
+    const show=matchesCategory&&matchesSearch;
+    card.style.display=show?"flex":"none";
+    if(show)count++;
+  });
+  $("count").textContent=count+" tool"+(count===1?"":"s")+" found";
+  $("no-results").style.display=count?"none":"block";
+}
+$("search").addEventListener("input",filterTools);
+$("search-btn").addEventListener("click",filterTools);
+$("search").addEventListener("keydown",e=>{if(e.key==="Enter")filterTools()});
+document.querySelectorAll(".filter").forEach(button=>{
+  button.addEventListener("click",()=>{
+    activeCategory=button.dataset.category;
+    document.querySelectorAll(".filter").forEach(b=>b.classList.toggle("active",b===button));
+    filterTools();
+  });
+});
+
+function updateWords(){
+  const text=$("word-text").value;
+  const trimmed=text.trim();
+  const words=trimmed?trimmed.split(/\s+/).length:0;
+  const sentences=trimmed?(trimmed.match(/[.!?]+(?=\s|$)/g)||[]).length:0;
+  const paragraphs=trimmed?trimmed.split(/\n\s*\n/).filter(p=>p.trim()).length:0;
+  $("word-result").textContent=`Words: ${words} · Characters: ${text.length} · Characters (no spaces): ${text.replace(/\s/g,"").length} · Sentences: ${sentences} · Paragraphs: ${paragraphs}`;
+}
+$("word-text").addEventListener("input",updateWords);
+
+let caseOutput="";
+document.querySelectorAll("[data-case]").forEach(button=>{
+  button.addEventListener("click",()=>{
+    const text=$("case-text").value;
+    const mode=button.dataset.case;
+    if(mode==="upper")caseOutput=text.toUpperCase();
+    if(mode==="lower")caseOutput=text.toLowerCase();
+    if(mode==="title")caseOutput=text.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+    if(mode==="sentence")caseOutput=text.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g,c=>c.toUpperCase());
+    $("case-result").textContent=caseOutput||"(No text entered)";
+  });
+});
+$("copy-case").addEventListener("click",()=>copyText(caseOutput,"Converted text"));
+
+$("calc-go").addEventListener("click",()=>{
+  const a=Number($("calc-a").value),b=Number($("calc-b").value),op=$("calc-op").value;
+  if($("calc-a").value===""||$("calc-b").value===""){ $("calc-result").textContent="Please enter both numbers.";return; }
+  if(op==="/"&&b===0){$("calc-result").textContent="Cannot divide by zero.";return;}
+  const result=op==="+"?a+b:op==="-"?a-b:op==="*"?a*b:a/b;
+  $("calc-result").textContent="Result: "+(Number.isFinite(result)?Number(result.toPrecision(12)):"Invalid result");
+});
+
+function randomInt(min,max){
+  const range=max-min+1;
+  if(!Number.isSafeInteger(range)||range<1)throw new Error("Range is too large.");
+  if(window.crypto&&crypto.getRandomValues){
+    const maxUint=4294967296,limit=Math.floor(maxUint/range)*range;
+    const array=new Uint32Array(1);
+    do{crypto.getRandomValues(array)}while(array[0]>=limit);
+    return min+(array[0]%range);
+  }
+  return Math.floor(Math.random()*range)+min;
+}
+$("pass-go").addEventListener("click",()=>{
+  const length=Number($("pass-length").value);
+  if(!Number.isInteger(length)||length<8||length>64){$("pass-result").textContent="Choose a length from 8 to 64.";return;}
+  let chars="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  if($("pass-symbols").value==="yes")chars+="!@#$%^&*()-_=+?";
+  let out="";
+  for(let i=0;i<length;i++)out+=chars[randomInt(0,chars.length-1)];
+  $("pass-result").textContent=out;
+});
+$("pass-copy").addEventListener("click",()=>copyText($("pass-result").textContent,"Password"));
+
+function formatJSON(minify){
+  try{
+    const data=JSON.parse($("json-input").value);
+    $("json-result").textContent=JSON.stringify(data,nullify(minify));
+  }catch(e){$("json-result").textContent="Invalid JSON: "+e.message;}
+}
+function nullify(minify){return minify?undefined:2}
+$("json-format").addEventListener("click",()=>formatJSON(false));
+$("json-minify").addEventListener("click",()=>formatJSON(true));
+$("json-copy").addEventListener("click",()=>copyText($("json-result").textContent,"JSON"));
+
+function updateGradient(){
+  const a=$("grad-a").value,b=$("grad-b").value,angle=$("grad-angle").value;
+  const css=`linear-gradient(${angle}deg, ${a}, ${b})`;
+  $("grad-angle-label").textContent=angle+"°";
+  $("grad-preview").style.background=css;
+  $("grad-result").textContent="background: "+css+";";
+}
+["grad-a","grad-b","grad-angle"].forEach(id=>$(id).addEventListener("input",updateGradient));
+$("grad-copy").addEventListener("click",()=>copyText($("grad-result").textContent,"CSS"));
+updateGradient();
+
+$("gst-go").addEventListener("click",()=>{
+  const amount=Number($("gst-price").value),rate=Number($("gst-rate").value);
+  if($("gst-price").value===""||!Number.isFinite(amount)||amount<0){$("gst-result").textContent="Enter a valid non-negative amount.";return;}
+  const taxRate=rate/100;
+  let base,tax,total;
+  if($("gst-mode").value==="add"){base=amount;tax=base*taxRate;total=base+tax;}
+  else{total=amount;base=total/(1+taxRate);tax=total-base;}
+  $("gst-result").textContent=`Original value: ₹${base.toFixed(2)}\nGST (${rate}%): ₹${tax.toFixed(2)}\nTotal: ₹${total.toFixed(2)}`;
+});
+
+$("disc-go").addEventListener("click",()=>{
+  const price=Number($("disc-price").value),pct=Number($("disc-percent").value);
+  if($("disc-price").value===""||$("disc-percent").value===""||!Number.isFinite(price)||!Number.isFinite(pct)||price<0||pct<0||pct>100){$("disc-result").textContent="Enter a non-negative price and a discount from 0% to 100%.";return;}
+  const saved=price*pct/100;
+  $("disc-result").textContent=`Original price: ₹${price.toFixed(2)}\nYou save: ₹${saved.toFixed(2)}\nFinal price: ₹${(price-saved).toFixed(2)}`;
+});
+
+$("rand-go").addEventListener("click",()=>{
+  const min=Number($("rand-min").value),max=Number($("rand-max").value);
+  if($("rand-min").value===""||$("rand-max").value===""||!Number.isSafeInteger(min)||!Number.isSafeInteger(max)||max<min){$("rand-result").textContent="Enter whole numbers, with maximum ≥ minimum.";return;}
+  try{$("rand-result").textContent=String(randomInt(min,max));}catch(e){$("rand-result").textContent=e.message;}
+});
+
+$("b64-encode").addEventListener("click",()=>{
+  try{$("b64-result").textContent=btoa(String.fromCharCode(...new TextEncoder().encode($("b64-input").value)));}
+  catch(e){$("b64-result").textContent="Could not encode this input.";}
+});
+$("b64-decode").addEventListener("click",()=>{
+  try{
+    const binary=atob($("b64-input").value.trim());
+    const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+    $("b64-result").textContent=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+  }catch(e){$("b64-result").textContent="Invalid Base64 or text is not valid UTF-8.";}
+});
+$("b64-copy").addEventListener("click",()=>copyText($("b64-result").textContent,"Result"));
+
+async function copyText(text,label){
+  if(!text||text==="Your result will appear here."||text==="Formatted JSON will appear here."||text==="Your password will appear here."){alert("Nothing to copy yet.");return;}
+  try{
+    if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(text);
+    else{
+      const area=document.createElement("textarea");
+      area.value=text;area.style.position="fixed";area.style.opacity="0";
+      document.body.appendChild(area);area.select();
+      const ok=document.execCommand("copy");area.remove();
+      if(!ok)throw new Error("Copy unavailable");
+    }
+    alert(label+" copied!");
+  }catch(e){alert("Copy failed. Please select and copy the result manually.");}
+}
+</script>
+</body>
+</html>
+
