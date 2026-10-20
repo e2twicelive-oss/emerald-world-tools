@@ -368,6 +368,305 @@ async function copyText(text,label){
   }catch(e){alert("Copy failed. Please select and copy the result manually.");}
 }
 </script>
+
+<!-- EMERALD WORLD TOOLS: BATCH 6 -->
+<style>
+.ew6-card{background:linear-gradient(145deg,#10251f,#0b1714);border:1px solid #24513e;border-radius:16px;padding:18px;color:#eafff2;cursor:pointer;text-align:left;transition:transform .2s,border-color .2s;min-height:140px}
+.ew6-card:hover{transform:translateY(-4px);border-color:#4ade80}
+.ew6-card .ew6-icon{font-size:28px;margin-bottom:12px;display:block}
+.ew6-card strong{font-size:16px;display:block;margin-bottom:7px}
+.ew6-card small{color:#a8c6b5;line-height:1.5}
+.ew6-panel{display:none;background:#0b1713;color:#eafff2;border:1px solid #24513e;border-radius:18px;padding:clamp(16px,3vw,28px);margin:24px 0}
+.ew6-panel h2{margin-top:0;color:#86efac}
+.ew6-panel label{display:block;margin:14px 0 7px;color:#c7e8d4}
+.ew6-panel input:not([type=checkbox]),.ew6-panel textarea,.ew6-panel select{box-sizing:border-box;width:100%;background:#10231b;color:#effff5;border:1px solid #315944;border-radius:9px;padding:12px;font:inherit}
+.ew6-panel textarea{min-height:110px;resize:vertical}
+.ew6-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.ew6-btn{background:#22c55e;color:#062512;border:0;border-radius:9px;padding:11px 16px;font-weight:700;cursor:pointer}
+.ew6-btn.secondary{background:#19382a;color:#eafff2;border:1px solid #356349}
+.ew6-output{background:#10231b;border:1px solid #315944;border-radius:10px;padding:14px;margin-top:14px;overflow-wrap:anywhere}
+.ew6-muted{color:#a8c6b5;font-size:13px}
+.ew6-stat{font-size:clamp(25px,5vw,38px);font-weight:800;color:#86efac}
+.ew6-close{float:right}
+#ew6-typing-text{font-size:17px;line-height:1.9;letter-spacing:.3px;user-select:none}
+#ew6-typing-text span.correct{color:#86efac}
+#ew6-typing-text span.wrong{color:#fca5a5;background:#542222}
+#ew6-typing-text span.current{border-bottom:2px solid #4ade80}
+#ew6-qr{display:flex;justify-content:center;align-items:center;min-height:20px;margin-top:16px;background:white;border-radius:10px;padding:12px;overflow:auto}
+#ew6-qr canvas,#ew6-qr img{max-width:100%;height:auto}
+@media(max-width:520px){.ew6-card{padding:14px;min-height:130px}.ew6-panel{padding:15px}}
+</style>
+
+<script>
+(function(){
+"use strict";
+const grid=document.getElementById("grid");
+const about=document.getElementById("about");
+if(!grid||!about){console.warn("Emerald World Tools: #grid or #about not found.");return;}
+if(document.getElementById("ew6-tools"))return;
+
+const tools=[
+{icon:"▦",name:"QR Code Generator",desc:"Create and download QR codes for links or text.",id:"qr"},
+{icon:"🎂",name:"Age Calculator",desc:"Calculate your age in years, months, and days.",id:"age"},
+{icon:"⌨️",name:"Typing Speed Test",desc:"Test your typing speed, accuracy, and mistakes.",id:"typing"},
+{icon:"¶",name:"Lorem Ipsum Generator",desc:"Generate placeholder text for designs and websites.",id:"lorem"},
+{icon:"⏱️",name:"Stopwatch & Timer",desc:"Use a stopwatch or set a countdown.",id:"timer"}
+];
+
+const host=document.createElement("div");
+host.id="ew6-tools";
+host.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px;margin:22px 0;";
+tools.forEach(t=>{
+ const card=document.createElement("button");
+ card.type="button";card.className="ew6-card";
+ card.innerHTML='<span class="ew6-icon">'+t.icon+'</span><strong>'+t.name+'</strong><small>'+t.desc+'</small>';
+ card.addEventListener("click",()=>openTool(t.id));
+ host.appendChild(card);
+});
+grid.appendChild(host);
+
+const panels=document.createElement("div");
+panels.id="ew6-panels";
+panels.innerHTML=`
+<section class="ew6-panel" id="panel-ew6-qr">
+<button class="ew6-btn secondary ew6-close" data-ew6-close>← Back</button>
+<h2>▦ QR Code Generator</h2><p class="ew6-muted">Create a QR code from text or a website URL. QR generation requires a free library to load from the internet.</p>
+<label for="ew6-qr-input">Text or URL</label><input id="ew6-qr-input" maxlength="2000" placeholder="https://example.com">
+<label for="ew6-qr-size">QR code size</label><select id="ew6-qr-size"><option value="160">160 × 160</option><option value="240" selected>240 × 240</option><option value="320">320 × 320</option><option value="400">400 × 400</option></select>
+<div class="ew6-actions"><button class="ew6-btn" id="ew6-qr-create">Generate QR Code</button><button class="ew6-btn secondary" id="ew6-qr-download" disabled>Download PNG</button></div>
+<div id="ew6-qr" aria-live="polite"></div><p id="ew6-qr-status" class="ew6-muted"></p>
+</section>
+
+<section class="ew6-panel" id="panel-ew6-age">
+<button class="ew6-btn secondary ew6-close" data-ew6-close>← Back</button>
+<h2>🎂 Age Calculator</h2><p class="ew6-muted">Calculate your age between your birth date and a selected date.</p>
+<label for="ew6-dob">Date of birth</label><input type="date" id="ew6-dob">
+<label for="ew6-age-date">Calculate age on</label><input type="date" id="ew6-age-date">
+<div class="ew6-actions"><button class="ew6-btn" id="ew6-age-calc">Calculate Age</button></div>
+<div id="ew6-age-result" class="ew6-output" aria-live="polite">Your result will appear here.</div>
+</section>
+
+<section class="ew6-panel" id="panel-ew6-typing">
+<button class="ew6-btn secondary ew6-close" data-ew6-close>← Back</button>
+<h2>⌨️ Typing Speed Test</h2><p class="ew6-muted">Type the displayed passage. The test ends when you finish or press Stop.</p>
+<div class="ew6-output" id="ew6-typing-text"></div>
+<label for="ew6-typing-input">Type here</label><textarea id="ew6-typing-input" placeholder="Press Start Test first..." disabled></textarea>
+<div class="ew6-actions"><button class="ew6-btn" id="ew6-typing-start">Start Test</button><button class="ew6-btn secondary" id="ew6-typing-stop">Stop</button></div>
+<div class="ew6-output"><div class="ew6-muted">Time</div><div class="ew6-stat" id="ew6-typing-time">0s</div><div class="ew6-muted">Speed · Accuracy</div><div class="ew6-stat" id="ew6-typing-stats">0 WPM · 100%</div></div>
+<p class="ew6-muted" id="ew6-typing-status" aria-live="polite">Ready when you are!</p>
+</section>
+
+<section class="ew6-panel" id="panel-ew6-lorem">
+<button class="ew6-btn secondary ew6-close" data-ew6-close>← Back</button>
+<h2>¶ Lorem Ipsum Generator</h2><p class="ew6-muted">Generate placeholder content for mockups, layouts, and web designs.</p>
+<label for="ew6-lorem-type">Generate</label><select id="ew6-lorem-type"><option value="paragraphs">Paragraphs</option><option value="sentences">Sentences</option><option value="words">Words</option></select>
+<label for="ew6-lorem-count">Amount (1–20)</label><input id="ew6-lorem-count" type="number" min="1" max="20" value="3">
+<div class="ew6-actions"><button class="ew6-btn" id="ew6-lorem-generate">Generate Text</button><button class="ew6-btn secondary" id="ew6-lorem-copy">Copy Text</button></div>
+<textarea id="ew6-lorem-output" style="min-height:220px" aria-label="Generated placeholder text" placeholder="Your generated text will appear here."></textarea>
+<p class="ew6-muted" id="ew6-lorem-status" aria-live="polite"></p>
+</section>
+
+<section class="ew6-panel" id="panel-ew6-timer">
+<button class="ew6-btn secondary ew6-close" data-ew6-close>← Back</button>
+<h2>⏱️ Stopwatch & Countdown Timer</h2>
+<label>Choose mode</label><select id="ew6-timer-mode"><option value="stopwatch">Stopwatch</option><option value="countdown">Countdown</option></select>
+<div id="ew6-countdown-inputs" style="display:none">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label for="ew6-minutes">Minutes</label><input type="number" id="ew6-minutes" min="0" max="999" value="1"></div><div><label for="ew6-seconds">Seconds</label><input type="number" id="ew6-seconds" min="0" max="59" value="0"></div></div>
+</div>
+<div class="ew6-output" style="text-align:center;margin-top:20px"><div id="ew6-timer-display" class="ew6-stat" style="font-variant-numeric:tabular-nums">00:00.0</div><p class="ew6-muted" id="ew6-timer-status">Ready</p></div>
+<div class="ew6-actions"><button class="ew6-btn" id="ew6-timer-start">Start</button><button class="ew6-btn secondary" id="ew6-timer-reset">Reset</button></div>
+</section>`;
+about.parentNode.insertBefore(panels,about);
+
+function openTool(id){
+ panels.querySelectorAll(".ew6-panel").forEach(p=>p.style.display="none");
+ const p=document.getElementById("panel-ew6-"+id);
+ if(p){p.style.display="block";p.scrollIntoView({behavior:"smooth",block:"start"});}
+}
+panels.querySelectorAll("[data-ew6-close]").forEach(b=>b.addEventListener("click",()=>{b.closest(".ew6-panel").style.display="none";grid.scrollIntoView({behavior:"smooth",block:"start"});}));
+
+// QR Code Generator: load the free QRCode.js library only when needed.
+let qrLibraryLoading=false;
+function loadQR(done){
+ if(window.QRCode){done(true);return;}
+ if(qrLibraryLoading){document.getElementById("ew6-qr-status").textContent="Loading QR library… try again in a moment.";return;}
+ qrLibraryLoading=true;
+ const s=document.createElement("script");
+ s.src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+ s.onload=()=>{qrLibraryLoading=false;done(!!window.QRCode);};
+ s.onerror=()=>{qrLibraryLoading=false;done(false);};
+ document.head.appendChild(s);
+}
+document.getElementById("ew6-qr-create").addEventListener("click",()=>{
+ const value=document.getElementById("ew6-qr-input").value.trim();
+ const out=document.getElementById("ew6-qr"),status=document.getElementById("ew6-qr-status"),dl=document.getElementById("ew6-qr-download");
+ if(!value){status.textContent="Please enter some text or a URL.";return;}
+ status.textContent="Loading QR generator…";out.replaceChildren();dl.disabled=true;
+ loadQR(ok=>{
+  if(!ok){status.textContent="The QR library could not load. Check your internet connection and try again.";return;}
+  out.replaceChildren();
+  try{
+   const size=Number(document.getElementById("ew6-qr-size").value);
+   new QRCode(out,{text:value,width:size,height:size,colorDark:"#10251f",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});
+   status.textContent="QR code ready! Scan it to verify before sharing.";
+   dl.disabled=false;
+  }catch(e){status.textContent="Could not generate this QR code. Try shorter text.";}
+ });
+});
+document.getElementById("ew6-qr-download").addEventListener("click",()=>{
+ const out=document.getElementById("ew6-qr"),canvas=out.querySelector("canvas"),img=out.querySelector("img");
+ let url=canvas?canvas.toDataURL("image/png"):img?img.src:null;
+ if(!url)return;
+ const a=document.createElement("a");a.href=url;a.download="emerald-world-qr.png";a.click();
+});
+
+// Age calculator
+const today=new Date();
+const isoDate=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+document.getElementById("ew6-age-date").value=isoDate(today);
+document.getElementById("ew6-age-calc").addEventListener("click",()=>{
+ const dobVal=document.getElementById("ew6-dob").value;
+ const endVal=document.getElementById("ew6-age-date").value;
+ const out=document.getElementById("ew6-age-result");
+ if(!dobVal||!endVal){out.textContent="Please select both dates.";return;}
+ const parse=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);};
+ const dob=parse(dobVal),end=parse(endVal);
+ if(dob>end){out.textContent="Birth date must be on or before the calculation date.";return;}
+ let y=end.getFullYear()-dob.getFullYear();
+ let m=end.getMonth()-dob.getMonth();
+ let d=end.getDate()-dob.getDate();
+ if(d<0){m--;d+=new Date(end.getFullYear(),end.getMonth(),0).getDate();}
+ if(m<0){y--;m+=12;}
+ const total=Math.floor((end-dob)/86400000);
+ out.innerHTML="<div class='ew6-stat'>"+y+" years</div><p>"+m+" months, "+d+" days</p><p class='ew6-muted'>Total: "+total.toLocaleString()+" days</p>";
+});
+
+// Typing speed test
+const passages=[
+"The best way to learn is to build something useful, test your ideas, and improve a little every day.",
+"Small steps can lead to big achievements when you stay curious, practise regularly, and keep going.",
+"Technology gives creative people new ways to solve problems and share their ideas with the world.",
+"Great websites are simple to use, quick to load, and helpful to the people who visit them."
+];
+let typingTarget="",typingStarted=0,typingElapsed=0,typingInterval=null,typingActive=false;
+const typingInput=document.getElementById("ew6-typing-input");
+const typingText=document.getElementById("ew6-typing-text");
+function renderTyping(){
+ const typed=typingInput.value;
+ typingText.innerHTML=Array.from(typingTarget).map((c,i)=>{
+  let cls=i===typed.length&&typingActive?"current":i<typed.length?(typed[i]===c?"correct":"wrong"):"";
+  return "<span class='"+cls+"'>"+(c===" "?"&nbsp;":c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c)+"</span>";
+ }).join("");
+ const elapsed=typingActive?(Date.now()-typingStarted)/1000:typingElapsed;
+ const minutes=Math.max(elapsed/60,1/60);
+ const correct=Array.from(typed).filter((c,i)=>c===typingTarget[i]).length;
+ const accuracy=typed.length?Math.round(correct/typed.length*100):100;
+ document.getElementById("ew6-typing-time").textContent=Math.floor(elapsed)+"s";
+ document.getElementById("ew6-typing-stats").textContent=Math.round(correct/5/minutes)+" WPM · "+accuracy+"%";
+}
+function stopTyping(message){
+ if(!typingActive)return;
+ typingElapsed=(Date.now()-typingStarted)/1000;typingActive=false;clearInterval(typingInterval);
+ typingInput.disabled=true;renderTyping();
+ document.getElementById("ew6-typing-status").textContent=message;
+}
+document.getElementById("ew6-typing-start").addEventListener("click",()=>{
+ clearInterval(typingInterval);typingTarget=passages[Math.floor(Math.random()*passages.length)];
+ typingInput.value="";typingInput.disabled=false;typingActive=true;typingElapsed=0;typingStarted=Date.now();
+ document.getElementById("ew6-typing-status").textContent="Go! Type the passage above.";
+ renderTyping();typingInput.focus();
+ typingInterval=setInterval(()=>{if(typingActive)renderTyping();},250);
+});
+typingInput.addEventListener("input",()=>{
+ if(!typingActive)return;renderTyping();
+ if(typingInput.value.length>=typingTarget.length)stopTyping("Finished! Great work!");
+});
+document.getElementById("ew6-typing-stop").addEventListener("click",()=>stopTyping("Test stopped. Start again to try another passage."));
+// Render an initial sample passage without starting the test.
+typingTarget=passages[0];renderTyping();
+
+// Lorem Ipsum Generator
+const loremWords=("lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure dolor reprehenderit voluptate velit esse cillum fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum").split(" ");
+function makeSentence(){
+ const n=8+Math.floor(Math.random()*10),arr=[];
+ for(let i=0;i<n;i++)arr.push(loremWords[Math.floor(Math.random()*loremWords.length)]);
+ return arr.join(" ").replace(/^./,c=>c.toUpperCase())+".";
+}
+function generateLorem(){
+ const count=Math.max(1,Math.min(20,Number(document.getElementById("ew6-lorem-count").value)||1));
+ document.getElementById("ew6-lorem-count").value=count;
+ const type=document.getElementById("ew6-lorem-type").value;let result=[];
+ if(type==="words"){
+  for(let i=0;i<count;i++)result.push(loremWords[Math.floor(Math.random()*loremWords.length)]);
+  document.getElementById("ew6-lorem-output").value=result.join(" ");
+ }else if(type==="sentences"){
+  for(let i=0;i<count;i++)result.push(makeSentence());
+  document.getElementById("ew6-lorem-output").value=result.join(" ");
+ }else{
+  for(let i=0;i<count;i++)result.push(Array.from({length:3+Math.floor(Math.random()*3)},makeSentence).join(" "));
+  document.getElementById("ew6-lorem-output").value=result.join("\n\n");
+ }
+ document.getElementById("ew6-lorem-status").textContent="Generated successfully.";
+}
+document.getElementById("ew6-lorem-generate").addEventListener("click",generateLorem);
+document.getElementById("ew6-lorem-copy").addEventListener("click",async()=>{
+ const out=document.getElementById("ew6-lorem-output"),status=document.getElementById("ew6-lorem-status");
+ try{await navigator.clipboard.writeText(out.value);status.textContent="Copied to clipboard!";}
+ catch(e){out.select();status.textContent="Text selected. Press Ctrl+C to copy.";}
+});
+generateLorem();
+
+// Stopwatch and countdown
+let timerRunning=false,timerStart=0,timerElapsed=0,timerInterval=null,timerDuration=60000;
+const timerDisplay=document.getElementById("ew6-timer-display");
+const timerStatus=document.getElementById("ew6-timer-status");
+const timerMode=document.getElementById("ew6-timer-mode");
+function fmt(ms){
+ ms=Math.max(0,ms);const tenths=Math.floor(ms/100)%10;
+ const sec=Math.floor(ms/1000)%60,min=Math.floor(ms/60000);
+ return String(min).padStart(2,"0")+":"+String(sec).padStart(2,"0")+"."+tenths;
+}
+function drawTimer(){
+ let elapsed=timerElapsed+(timerRunning?Date.now()-timerStart:0);
+ let remaining=timerMode.value==="countdown"?Math.max(0,timerDuration-elapsed):elapsed;
+ timerDisplay.textContent=fmt(remaining);
+ if(timerRunning&&timerMode.value==="countdown"&&remaining<=0){
+  timerRunning=false;clearInterval(timerInterval);timerElapsed=timerDuration;
+  timerStatus.textContent="Time's up!";document.getElementById("ew6-timer-start").textContent="Start";
+  timerDisplay.textContent="00:00.0";
+ }
+}
+function resetTimer(){
+ timerRunning=false;clearInterval(timerInterval);timerElapsed=0;
+ timerStatus.textContent="Ready";document.getElementById("ew6-timer-start").textContent="Start";
+ timerDuration=(Math.max(0,Number(document.getElementById("ew6-minutes").value)||0)*60+Math.max(0,Math.min(59,Number(document.getElementById("ew6-seconds").value)||0)))*1000;
+ drawTimer();
+}
+timerMode.addEventListener("change",()=>{
+ document.getElementById("ew6-countdown-inputs").style.display=timerMode.value==="countdown"?"block":"none";resetTimer();
+});
+document.getElementById("ew6-minutes").addEventListener("change",resetTimer);
+document.getElementById("ew6-seconds").addEventListener("change",resetTimer);
+document.getElementById("ew6-timer-start").addEventListener("click",()=>{
+ if(timerRunning){
+  timerElapsed+=Date.now()-timerStart;timerRunning=false;clearInterval(timerInterval);
+  timerStatus.textContent="Paused";document.getElementById("ew6-timer-start").textContent="Resume";drawTimer();return;
+ }
+ if(timerMode.value==="countdown"&&timerElapsed===0){
+  timerDuration=(Math.max(0,Number(document.getElementById("ew6-minutes").value)||0)*60+Math.max(0,Math.min(59,Number(document.getElementById("ew6-seconds").value)||0)))*1000;
+  if(timerDuration<=0){timerStatus.textContent="Set a countdown longer than zero.";return;}
+ }
+ if(timerMode.value==="countdown"&&timerElapsed>=timerDuration)timerElapsed=0;
+ timerStart=Date.now();timerRunning=true;timerStatus.textContent=timerMode.value==="countdown"?"Countdown running":"Stopwatch running";
+ document.getElementById("ew6-timer-start").textContent="Pause";
+ timerInterval=setInterval(drawTimer,100);drawTimer();
+});
+document.getElementById("ew6-timer-reset").addEventListener("click",resetTimer);
+resetTimer();
+})();
+</script>
+<!-- END EMERALD WORLD TOOLS: BATCH 6 -->
+
 </body>
 
 <style>
