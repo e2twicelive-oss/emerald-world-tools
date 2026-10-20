@@ -1932,5 +1932,378 @@ drawPomo();
 </script>
 <!-- END BATCH 7 -->
 
+<style>
+/* Emerald World Tools — Batch 36–45 */
+#ew8-panels { color:#e5f5ec; }
+.ew8-card {
+  width:100%; min-height:115px; padding:18px; text-align:left;
+  border:1px solid #176344; border-radius:14px;
+  background:linear-gradient(145deg,#102b20,#0b1913);
+  color:#e5f5ec; cursor:pointer; transition:.2s;
+}
+.ew8-card:hover { border-color:#39d98a; transform:translateY(-3px); }
+.ew8-card strong { display:block; font-size:16px; margin-bottom:9px; }
+.ew8-card span { display:block; font-size:13px; color:#a9c9b7; line-height:1.5; }
+.ew8-panel {
+  margin:18px 0; padding:22px; border:1px solid #176344;
+  border-radius:16px; background:#0b1913; color:#e5f5ec;
+}
+.ew8-panel h2 { margin-top:0; color:#52e59b; }
+.ew8-panel label { display:block; margin:13px 0 6px; color:#c7e5d3; }
+.ew8-panel input:not([type=checkbox]), .ew8-panel textarea,
+.ew8-panel select {
+  display:block; width:100%; box-sizing:border-box; padding:11px;
+  border:1px solid #285c43; border-radius:8px;
+  background:#07110c; color:#effff5; font:inherit;
+}
+.ew8-panel textarea { min-height:115px; resize:vertical; }
+.ew8-panel button {
+  margin:10px 7px 4px 0; padding:10px 15px; border:0;
+  border-radius:8px; background:#16824e; color:white;
+  cursor:pointer; font:inherit;
+}
+.ew8-panel button:hover { background:#20a663; }
+.ew8-output {
+  margin-top:14px; padding:13px; border:1px solid #285c43;
+  border-radius:8px; background:#06100b; overflow-wrap:anywhere;
+  white-space:pre-wrap; line-height:1.6;
+}
+.ew8-muted { color:#a9c9b7; font-size:13px; }
+.ew8-panel iframe { width:100%; height:320px; border:1px solid #285c43;
+  border-radius:8px; background:white; }
+.ew8-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:600px) {
+  .ew8-panel { padding:14px; }
+  .ew8-row { grid-template-columns:1fr; }
+}
+</style>
+
+<script>
+(function () {
+  if (document.getElementById("ew8-tools")) return;
+
+  const tools = [
+    { n:36, name:"HTML Previewer", desc:"Write HTML and safely preview your design.", id:"html" },
+    { n:37, name:"Text Reverser", desc:"Reverse characters, words, or lines.", id:"reverse" },
+    { n:38, name:"Character Frequency Counter", desc:"Count each character in your text.", id:"chars" },
+    { n:39, name:"Time Calculator", desc:"Add or subtract hours, minutes, and seconds.", id:"time" },
+    { n:40, name:"Roman Numeral Converter", desc:"Convert numbers to Roman numerals and back.", id:"roman" },
+    { n:41, name:"Word Frequency Counter", desc:"Find your most frequently used words.", id:"words" },
+    { n:42, name:"Slug Generator", desc:"Create clean, URL-friendly slugs.", id:"slug" },
+    { n:43, name:"ASCII Art Text Generator", desc:"Turn letters and numbers into block art.", id:"ascii" },
+    { n:44, name:"Number to Words Converter", desc:"Write whole numbers in English words.", id:"numberwords" },
+    { n:45, name:"Reading Time Calculator", desc:"Estimate reading time for an article.", id:"reading" }
+  ];
+
+  const grid = document.getElementById("grid");
+  const about = document.getElementById("about");
+  if (!grid) {
+    console.error("Emerald World Tools: Could not find #grid.");
+    return;
+  }
+
+  const cardWrap = document.createElement("div");
+  cardWrap.id = "ew8-tools";
+  cardWrap.style.cssText =
+    "display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px;width:100%;";
+  tools.forEach(t => {
+    const b = document.createElement("button");
+    b.className = "ew8-card";
+    b.type = "button";
+    b.innerHTML = "<strong>" + t.n + ". " + t.name +
+      "</strong><span>" + t.desc + "</span>";
+    b.addEventListener("click", () => {
+      const p = document.getElementById("ew8-panel-" + t.id);
+      document.querySelectorAll("#ew8-panels .ew8-panel").forEach(x => x.hidden = true);
+      p.hidden = false;
+      p.scrollIntoView({ behavior:"smooth", block:"start" });
+    });
+    cardWrap.appendChild(b);
+  });
+  grid.appendChild(cardWrap);
+
+  const panels = document.createElement("div");
+  panels.id = "ew8-panels";
+  tools.forEach(t => {
+    const p = document.createElement("section");
+    p.className = "ew8-panel";
+    p.id = "ew8-panel-" + t.id;
+    p.hidden = true;
+    p.innerHTML = "<h2>" + t.n + ". " + t.name + "</h2><p class='ew8-muted'>" +
+      t.desc + "</p><div class='ew8-content'></div>";
+    panels.appendChild(p);
+  });
+  if (about && about.parentNode) about.parentNode.insertBefore(panels, about);
+  else document.body.appendChild(panels);
+
+  const $ = (p, s) => p.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[c]);
+  const btn = (p, text, fn) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = text;
+    b.addEventListener("click", fn);
+    p.appendChild(b);
+    return b;
+  };
+  const field = (p, label, tag, attrs) => {
+    const l = document.createElement("label");
+    l.textContent = label;
+    const e = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(k => {
+      if (k === "text") e.textContent = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    });
+    l.appendChild(e); p.appendChild(l);
+    return e;
+  };
+  const output = (p, text) => {
+    let o = $(p, ".ew8-output");
+    if (!o) { o = document.createElement("div"); o.className = "ew8-output"; p.appendChild(o); }
+    o.textContent = text;
+    return o;
+  };
+
+  /* 36 — HTML Previewer */
+  {
+    const p = $("#ew8-panel-html .ew8-content");
+    p.innerHTML = "<label>HTML code</label><textarea id='ew8-html-code' spellcheck='false' placeholder='Write HTML here...'></textarea><button type='button' id='ew8-html-preview'>Preview HTML</button><button type='button' id='ew8-html-example'>Load example</button><p class='ew8-muted'>Scripts are disabled in the preview for safety.</p><iframe id='ew8-html-frame' sandbox='allow-same-origin' title='HTML preview'></iframe>";
+    const input = $("#ew8-html-code", p);
+    const frame = $("#ew8-html-frame", p);
+    $("#ew8-html-preview", p).addEventListener("click", () => {
+      frame.srcdoc = input.value;
+    });
+    $("#ew8-html-example", p).addEventListener("click", () => {
+      input.value = "<!doctype html><html><head><style>body{font-family:Arial;text-align:center;padding:30px;background:#e8fff1;color:#14532d}h1{color:#16824e}button{padding:10px 18px;border:0;border-radius:8px;background:#16824e;color:white}</style></head><body><h1>Hello, Emerald World!</h1><p>Your HTML preview is working.</p><button>Sample button</button></body></html>";
+      frame.srcdoc = input.value;
+    });
+  }
+
+  /* 37 — Text Reverser */
+  {
+    const p = $("#ew8-panel-reverse .ew8-content");
+    p.innerHTML = "<label>Enter text</label><textarea id='ew8-rev-input' placeholder='Type or paste text...'></textarea><label>Reverse mode</label><select id='ew8-rev-mode'><option value='chars'>Reverse characters</option><option value='words'>Reverse word order</option><option value='lines'>Reverse line order</option></select><button type='button' id='ew8-rev-go'>Reverse text</button><div class='ew8-output' id='ew8-rev-out'>Your result will appear here.</div><button type='button' id='ew8-rev-copy'>Copy result</button>";
+    $("#ew8-rev-go", p).addEventListener("click", () => {
+      const s = $("#ew8-rev-input", p).value;
+      const m = $("#ew8-rev-mode", p).value;
+      let r = m === "chars" ? Array.from(s).reverse().join("") :
+        m === "words" ? s.trim().split(/\s+/).filter(Boolean).reverse().join(" ") :
+        s.split("\n").reverse().join("\n");
+      $("#ew8-rev-out", p).textContent = r;
+    });
+    $("#ew8-rev-copy", p).addEventListener("click", () =>
+      navigator.clipboard.writeText($("#ew8-rev-out", p).textContent)
+        .catch(() => alert("Copy isn't available here. Please select the result and copy it.")));
+  }
+
+  /* 38 — Character Frequency Counter */
+  {
+    const p = $("#ew8-panel-chars .ew8-content");
+    p.innerHTML = "<label>Enter text</label><textarea id='ew8-char-input' placeholder='Paste text to analyze...'></textarea><label><input type='checkbox' id='ew8-char-space'> Include spaces and line breaks</label><button type='button' id='ew8-char-go'>Count characters</button><div class='ew8-output' id='ew8-char-out'>Character counts will appear here.</div>";
+    $("#ew8-char-go", p).addEventListener("click", () => {
+      const s = $("#ew8-char-input", p).value;
+      const include = $("#ew8-char-space", p).checked;
+      const chars = Array.from(s).filter(c => include || !/\s/.test(c));
+      const counts = new Map();
+      chars.forEach(c => counts.set(c, (counts.get(c) || 0) + 1));
+      const sorted = Array.from(counts.entries()).sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0]));
+      $("#ew8-char-out", p).textContent = "Total counted characters: " + chars.length +
+        "\nUnique characters: " + counts.size + "\n\n" +
+        (sorted.map(([c,n]) => (c === "\n" ? "[newline]" : c === "\t" ? "[tab]" : c === " " ? "[space]" : c) + " : " + n).join("\n") || "No characters to count.");
+    });
+  }
+
+  /* 39 — Time Calculator */
+  {
+    const p = $("#ew8-panel-time .ew8-content");
+    p.innerHTML = "<div class='ew8-row'><div><label>First duration — hours</label><input id='ew8-t-h1' type='number' min='0' value='1'></div><div><label>First duration — minutes</label><input id='ew8-t-m1' type='number' min='0' value='30'></div><div><label>First duration — seconds</label><input id='ew8-t-s1' type='number' min='0' value='0'></div><div><label>Operation</label><select id='ew8-t-op'><option value='add'>Add (+)</option><option value='sub'>Subtract (−)</option></select></div><div><label>Second duration — hours</label><input id='ew8-t-h2' type='number' min='0' value='0'></div><div><label>Second duration — minutes</label><input id='ew8-t-m2' type='number' min='0' value='45'></div><div><label>Second duration — seconds</label><input id='ew8-t-s2' type='number' min='0' value='0'></div></div><button type='button' id='ew8-t-go'>Calculate time</button><div class='ew8-output' id='ew8-t-out'>Result will appear here.</div>";
+    $("#ew8-t-go", p).addEventListener("click", () => {
+      const val = id => Number($(p, "#" + id).value);
+      const ids = ["ew8-t-h1","ew8-t-m1","ew8-t-s1","ew8-t-h2","ew8-t-m2","ew8-t-s2"];
+      if (ids.some(id => !Number.isFinite(val(id)) || val(id) < 0)) {
+        $("#ew8-t-out", p).textContent = "Please enter valid non-negative durations."; return;
+      }
+      let a = val("ew8-t-h1")*3600 + val("ew8-t-m1")*60 + val("ew8-t-s1");
+      let b = val("ew8-t-h2")*3600 + val("ew8-t-m2")*60 + val("ew8-t-s2");
+      let total = a + ($("#ew8-t-op", p).value === "add" ? b : -b);
+      const sign = total < 0 ? "-" : "";
+      total = Math.abs(total);
+      const h = Math.floor(total/3600), m = Math.floor(total%3600/60), s = total%60;
+      $("#ew8-t-out", p).textContent = "Result: " + sign + h + " hours, " + m + " minutes, " + s + " seconds\nTotal seconds: " + (sign === "-" ? "-" : "") + total;
+    });
+  }
+
+  /* 40 — Roman Numeral Converter */
+  {
+    const p = $("#ew8-panel-roman .ew8-content");
+    p.innerHTML = "<label>Conversion</label><select id='ew8-rom-mode'><option value='to'>Number → Roman numeral</option><option value='from'>Roman numeral → Number</option></select><label>Enter value</label><input id='ew8-rom-input' placeholder='e.g. 2026 or MMXXVI'><button type='button' id='ew8-rom-go'>Convert</button><div class='ew8-output' id='ew8-rom-out'>Your result will appear here.</div>";
+    const toRoman = n => {
+      if (!Number.isInteger(n) || n < 1 || n > 3999) throw Error("Enter a whole number from 1 to 3999.");
+      const vals = [[1000,"M"],[900,"CM"],[500,"D"],[400,"CD"],[100,"C"],[90,"XC"],[50,"L"],[40,"XL"],[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]];
+      let s = "";
+      for (const [v, sym] of vals) { while(n >= v) { s += sym; n -= v; } }
+      return s;
+    };
+    $("#ew8-rom-go", p).addEventListener("click", () => {
+      try {
+        const s = $("#ew8-rom-input", p).value.trim().toUpperCase();
+        if ($("#ew8-rom-mode", p).value === "to") {
+          if (!/^\d+$/.test(s)) throw Error("Enter a valid whole number.");
+          $("#ew8-rom-out", p).textContent = toRoman(Number(s));
+        } else {
+          if (!s || !/^[IVXLCDM]+$/.test(s)) throw Error("Enter a valid Roman numeral using I, V, X, L, C, D, M.");
+          let n = 0, map = {I:1,V:5,X:10,L:50,C:100,D:500,M:1000};
+          for(let i=0;i<s.length;i++) n += map[s[i]] < (map[s[i+1]] || 0) ? -map[s[i]] : map[s[i]];
+          if (n < 1 || n > 3999 || toRoman(n) !== s) throw Error("That is not a standard Roman numeral.");
+          $("#ew8-rom-out", p).textContent = String(n);
+        }
+      } catch(e) { $("#ew8-rom-out", p).textContent = e.message; }
+    });
+  }
+
+  /* 41 — Word Frequency Counter */
+  {
+    const p = $("#ew8-panel-words .ew8-content");
+    p.innerHTML = "<label>Enter text</label><textarea id='ew8-word-input' placeholder='Paste an article or paragraph...'></textarea><div class='ew8-row'><div><label>Minimum word length</label><input id='ew8-word-min' type='number' min='1' value='1'></div><div><label>Results limit</label><input id='ew8-word-limit' type='number' min='1' max='500' value='20'></div></div><label><input type='checkbox' id='ew8-word-case'> Case-sensitive counting</label><button type='button' id='ew8-word-go'>Analyze words</button><div class='ew8-output' id='ew8-word-out'>Word frequency results will appear here.</div>";
+    $("#ew8-word-go", p).addEventListener("click", () => {
+      const raw = $("#ew8-word-input", p).value;
+      const min = Math.max(1, Number($("#ew8-word-min", p).value) || 1);
+      const limit = Math.min(500, Math.max(1, Number($("#ew8-word-limit", p).value) || 20));
+      const sensitive = $("#ew8-word-case", p).checked;
+      const matches = raw.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) || [];
+      const counts = new Map();
+      matches.forEach(w => {
+        if (w.length >= min) {
+          const key = sensitive ? w : w.toLocaleLowerCase();
+          const item = counts.get(key) || {word:w,count:0};
+          item.count++; counts.set(key,item);
+        }
+      });
+      const sorted = Array.from(counts.values()).sort((a,b)=>b.count-a.count || a.word.localeCompare(b.word)).slice(0,limit);
+      $("#ew8-word-out", p).textContent = "Words detected: " + matches.length +
+        "\nUnique words (after length filter): " + counts.size + "\n\n" +
+        (sorted.map((x,i)=>(i+1)+". "+x.word+" — "+x.count).join("\n") || "No matching words found.");
+    });
+  }
+
+  /* 42 — Slug Generator */
+  {
+    const p = $("#ew8-panel-slug .ew8-content");
+    p.innerHTML = "<label>Title or phrase</label><textarea id='ew8-slug-input' placeholder='e.g. 10 Best Free Tools for Students!'></textarea><label>Separator</label><select id='ew8-slug-sep'><option value='-'>Hyphen (-)</option><option value='_'>Underscore (_)</option></select><label><input type='checkbox' id='ew8-slug-lower' checked> Convert to lowercase</label><button type='button' id='ew8-slug-go'>Generate slug</button><div class='ew8-output' id='ew8-slug-out'></div><button type='button' id='ew8-slug-copy'>Copy slug</button>";
+    $("#ew8-slug-go", p).addEventListener("click", () => {
+      const sep = $("#ew8-slug-sep", p).value;
+      let s = $("#ew8-slug-input", p).value.trim().normalize("NFKD").replace(/[\u0300-\u036f]/g,"");
+      s = s.replace(/&/g," and ").replace(/[^\p{L}\p{N}_\s-]/gu,"").trim();
+      s = s.replace(/[\s_-]+/g, sep).replace(new RegExp("^" + (sep === "-" ? "-" : "_") + "+|"+(sep === "-" ? "-" : "_")+"+$","g"),"");
+      if ($("#ew8-slug-lower", p).checked) s = s.toLowerCase();
+      $("#ew8-slug-out", p).textContent = s || "Enter a title to generate a slug.";
+    });
+    $("#ew8-slug-copy", p).addEventListener("click", () =>
+      navigator.clipboard.writeText($("#ew8-slug-out", p).textContent)
+        .catch(() => alert("Copy isn't available here. Please select the slug and copy it.")));
+  }
+
+  /* 43 — ASCII Art Text Generator */
+  {
+    const p = $("#ew8-panel-ascii .ew8-content");
+    p.innerHTML = "<label>Text (A–Z, 0–9)</label><input id='ew8-ascii-input' maxlength='30' placeholder='EMERALD WORLD'><button type='button' id='ew8-ascii-go'>Generate ASCII art</button><div class='ew8-output' id='ew8-ascii-out'>Your block-letter art will appear here.</div><button type='button' id='ew8-ascii-copy'>Copy art</button><p class='ew8-muted'>Unsupported punctuation is shown as a space. Maximum 30 characters.</p>";
+    const font = {
+      A:[" ### ","#   #","#####","#   #","#   #"],B:["#### ","#   #","#### ","#   #","#### "],
+      C:[" ####","#    ","#    ","#    "," ####"],D:["#### ","#   #","#   #","#   #","#### "],
+      E:["#####","#    ","#### ","#    ","#####"],F:["#####","#    ","#### ","#    ","#    "],
+      G:[" ####","#    ","# ###","#   #"," ####"],H:["#   #","#   #","#####","#   #","#   #"],
+      I:["#####","  #  ","  #  ","  #  ","#####"],J:["#####","   # ","   # ","#  # "," ##  "],
+      K:["#   #","#  # ","###  ","#  # ","#   #"],L:["#    ","#    ","#    ","#    ","#####"],
+      M:["#   #","## ##","# # #","#   #","#   #"],N:["#   #","##  #","# # #","#  ##","#   #"],
+      O:[" ### ","#   #","#   #","#   #"," ### "],P:["#### ","#   #","#### ","#    ","#    "],
+      Q:[" ### ","#   #","#   #","#  ##"," ####"],R:["#### ","#   #","#### ","#  # ","#   #"],
+      S:[" ####","#    "," ### ","    #","#### "],T:["#####","  #  ","  #  ","  #  ","  #  "],
+      U:["#   #","#   #","#   #","#   #"," ### "],V:["#   #","#   #","#   #"," # # ","  #  "],
+      W:["#   #","#   #","# # #","## ##","#   #"],X:["#   #"," # # ","  #  "," # # ","#   #"],
+      Y:["#   #"," # # ","  #  ","  #  ","  #  "],Z:["#####","   # ","  #  "," #   ","#####"],
+      "0":[" ### ","#  ##","# # #","##  #"," ### "],"1":["  #  "," ##  ","  #  ","  #  ","#####"],
+      "2":[" ### ","#   #","   # ","  #  ","#####"],"3":["#### ","    #"," ### ","    #","#### "],
+      "4":["#   #","#   #","#####","    #","    #"],"5":["#####","#    ","#### ","    #","#### "],
+      "6":[" ### ","#    ","#### ","#   #"," ### "],"7":["#####","   # ","  #  "," #   ","#    "],
+      "8":[" ### ","#   #"," ### ","#   #"," ### "],"9":[" ### ","#   #"," ####","    #"," ### "],
+      " ":["     ","     ","     ","     ","     "]
+    };
+    $("#ew8-ascii-go", p).addEventListener("click", () => {
+      const s = $("#ew8-ascii-input", p).value.toUpperCase().slice(0,30);
+      if (!s) { $("#ew8-ascii-out", p).textContent = "Enter some text first."; return; }
+      const lines = [0,1,2,3,4].map(i => Array.from(s,c => (font[c] || font[" "])[i]).join("  "));
+      $("#ew8-ascii-out", p).textContent = lines.join("\n");
+    });
+    $("#ew8-ascii-copy", p).addEventListener("click", () =>
+      navigator.clipboard.writeText($("#ew8-ascii-out", p).textContent)
+        .catch(() => alert("Copy isn't available here. Please select the art and copy it.")));
+  }
+
+  /* 44 — Number to Words Converter */
+  {
+    const p = $("#ew8-panel-numberwords .ew8-content");
+    p.innerHTML = "<label>Enter a whole number</label><input id='ew8-nw-input' type='number' step='1' min='-999999999999' max='999999999999' placeholder='e.g. 1250'><button type='button' id='ew8-nw-go'>Convert to words</button><div class='ew8-output' id='ew8-nw-out'>Your number in words will appear here.</div>";
+    const small = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
+    const tens = ["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"];
+    function under1000(n) {
+      let out = [];
+      if (n >= 100) { out.push(small[Math.floor(n/100)],"hundred"); n %= 100; }
+      if (n >= 20) { out.push(tens[Math.floor(n/10)]); if(n%10) out.push(small[n%10]); }
+      else if(n > 0) out.push(small[n]);
+      return out.join(" ");
+    }
+    function words(n) {
+      if(n === 0) return "zero";
+      if(n < 0) return "minus " + words(-n);
+      const names = ["","thousand","million","billion"];
+      let parts = [], group = 0;
+      while(n > 0) {
+        const chunk = n % 1000;
+        if(chunk) parts.unshift(under1000(chunk) + (names[group] ? " " + names[group] : ""));
+        n = Math.floor(n/1000); group++;
+      }
+      return parts.join(" ");
+    }
+    $("#ew8-nw-go", p).addEventListener("click", () => {
+      const s = $("#ew8-nw-input", p).value.trim();
+      if (!s || !Number.isSafeInteger(Number(s)) || Math.abs(Number(s)) > 999999999999) {
+        $("#ew8-nw-out", p).textContent = "Enter a valid whole number from -999,999,999,999 to 999,999,999,999.";
+        return;
+      }
+      $("#ew8-nw-out", p).textContent = words(Number(s));
+    });
+  }
+
+  /* 45 — Reading Time Calculator */
+  {
+    const p = $("#ew8-panel-reading .ew8-content");
+    p.innerHTML = "<label>Paste your article or text</label><textarea id='ew8-read-input' placeholder='Paste your article here...'></textarea><div class='ew8-row'><div><label>Reading speed (words per minute)</label><input id='ew8-read-speed' type='number' min='1' max='2000' value='200'></div><div><label>Speaking speed (words per minute)</label><input id='ew8-read-speak' type='number' min='1' max='1000' value='130'></div></div><button type='button' id='ew8-read-go'>Calculate time</button><div class='ew8-output' id='ew8-read-out'>Your reading estimate will appear here.</div>";
+    $("#ew8-read-go", p).addEventListener("click", () => {
+      const text = $("#ew8-read-input", p).value.trim();
+      const words = text.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) || [];
+      const speed = Number($("#ew8-read-speed", p).value);
+      const speak = Number($("#ew8-read-speak", p).value);
+      if (speed <= 0 || speak <= 0 || !Number.isFinite(speed) || !Number.isFinite(speak)) {
+        $("#ew8-read-out", p).textContent = "Enter valid reading and speaking speeds."; return;
+      }
+      const fmt = n => {
+        const sec = Math.ceil(n*60);
+        if (sec < 60) return sec + " seconds";
+        const m = Math.floor(sec/60), s = sec%60;
+        return m + " min" + (s ? " " + s + " sec" : "");
+      };
+      $("#ew8-read-out", p).textContent =
+        "Word count: " + words.length +
+        "\nCharacter count (including spaces): " + text.length +
+        "\nEstimated reading time: " + fmt(words.length/speed) +
+        "\nEstimated speaking time: " + fmt(words.length/speak);
+    });
+  }
+
+  console.log("Emerald World Tools: Batch 36–45 loaded.");
+})();
+</script>
+
 </html>
 
