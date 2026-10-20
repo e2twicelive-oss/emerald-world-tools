@@ -899,5 +899,324 @@ function build(id,p){
 }
 </style>
 
+<script>
+(function () {
+  "use strict";
+
+  const grid = document.getElementById("grid");
+  if (!grid) return;
+
+  const tools = [
+    ["sha256-tool", "🔐", "SHA Hash Generator", "Developer",
+      "Generate SHA-256 hashes from text."],
+    ["text-diff-tool", "📝", "Text Diff Checker", "Text",
+      "Compare two texts and find changed lines."],
+    ["aspect-tool", "📐", "Aspect Ratio Calculator", "Calculators",
+      "Calculate dimensions and aspect ratios."],
+    ["regex-tool", "🔎", "Regex Tester", "Developer",
+      "Test regular expressions against sample text."],
+    ["csv-json-tool", "📊", "CSV to JSON Converter", "Developer",
+      "Convert CSV data into JSON."]
+  ];
+
+  const css = document.createElement("style");
+  css.textContent = `
+  .ew5-panel{display:none;background:radial-gradient(ellipse at top left,#153724,#0b120e 70%);color:#eafff1;border:1px solid #287749;border-radius:20px;padding:clamp(18px,4vw,30px);margin:22px 0;box-shadow:0 12px 36px #0004}
+  .ew5-panel h2{color:#75f5a7;font-size:26px;margin:0 0 12px}
+  .ew5-panel p{color:#b6d8c2;line-height:1.7}
+  .ew5-panel label{display:block;color:#c9f5d7;font-weight:700;margin:16px 0 6px}
+  .ew5-panel input,.ew5-panel textarea,.ew5-panel select{box-sizing:border-box;width:100%;padding:12px;margin:7px 0 12px;background:#080f0b;color:#eafff1;border:1px solid #326847;border-radius:10px;font:inherit}
+  .ew5-panel textarea{min-height:130px;resize:vertical}
+  .ew5-panel button{background:linear-gradient(135deg,#128047,#28c873);color:white;border:1px solid #55e994;border-radius:10px;padding:11px 16px;margin:6px 6px 6px 0;font-weight:700;cursor:pointer}
+  .ew5-panel button:hover{filter:brightness(1.12);transform:translateY(-1px)}
+  .ew5-result{background:#070e0a;color:#9bf4b9;border:1px solid #245b3b;border-radius:12px;padding:15px;margin-top:14px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
+  .ew5-good{color:#75f5a7}.ew5-bad{color:#ff9a9a}
+  #grid .card:has([data-ew5-open]){background:linear-gradient(145deg,#142b1d,#0b120e)!important;color:#eafff1!important;border:1px solid #285f3d!important;border-radius:17px!important;padding:22px!important;transition:transform .2s,border-color .2s,box-shadow .2s}
+  #grid .card:has([data-ew5-open]):hover{transform:translateY(-4px);border-color:#54e994!important;box-shadow:0 12px 28px #20c76520}
+  #grid .card:has([data-ew5-open]) h3{color:#75f5a7!important}
+  #grid .card:has([data-ew5-open]) p{color:#b6d8c2!important;line-height:1.7}
+  #grid .card:has([data-ew5-open]) button{background:linear-gradient(135deg,#128047,#28c873)!important;color:white!important;border:1px solid #55e994!important;border-radius:10px!important;padding:11px 16px!important;cursor:pointer}
+  `;
+  document.head.appendChild(css);
+
+  const host = document.getElementById("about") ||
+    document.querySelector("footer") || document.body;
+
+  const make = (tag, attrs, text) => {
+    const el = document.createElement(tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+    if (text !== undefined) el.textContent = text;
+    return el;
+  };
+
+  function addField(panel, label, tag, attrs) {
+    panel.appendChild(make("label", {}, label));
+    const el = make(tag, attrs || {});
+    panel.appendChild(el);
+    return el;
+  }
+
+  function addButton(panel, label, fn) {
+    const b = make("button", {type:"button"}, label);
+    b.addEventListener("click", fn);
+    panel.appendChild(b);
+    return b;
+  }
+
+  function result(panel) {
+    const el = make("div", {class:"ew5-result", "aria-live":"polite"},
+      "Your result will appear here.");
+    panel.appendChild(el);
+    return el;
+  }
+
+  function copyButton(panel, getText) {
+    addButton(panel, "Copy result", async () => {
+      try {
+        await navigator.clipboard.writeText(getText());
+      } catch (_) {
+        const ta = make("textarea");
+        ta.value = getText();
+        panel.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch (_) {}
+        ta.remove();
+      }
+    });
+  }
+
+  tools.forEach(([id, icon, name, category, desc]) => {
+    if (document.getElementById("panel-" + id)) return;
+
+    const card = make("article", {
+      class:"card",
+      "data-category":category,
+      "data-keywords":(name + " " + desc + " free online tool").toLowerCase()
+    });
+    card.append(
+      make("h3", {}, icon + "  " + name),
+      make("p", {}, desc)
+    );
+
+    const open = make("button", {
+      type:"button",
+      "data-ew5-open":"true"
+    }, "Open Tool");
+    card.appendChild(open);
+    grid.appendChild(card);
+
+    const panel = make("section", {
+      id:"panel-" + id,
+      class:"ew5-panel tool-panel"
+    });
+    panel.append(make("h2", {}, icon + " " + name), make("p", {}, desc));
+    host.parentNode.insertBefore(panel, host);
+
+    open.addEventListener("click", () => {
+      document.querySelectorAll(".ew5-panel").forEach(p => p.style.display="none");
+      panel.style.display = "block";
+      panel.scrollIntoView({behavior:"smooth",block:"start"});
+    });
+
+    build(id, panel);
+  });
+
+  function build(id, p) {
+    if (id === "sha256-tool") {
+      const input = addField(p, "Enter text to hash", "textarea",
+        {rows:"5",placeholder:"Type or paste text here..."});
+      const output = result(p);
+      addButton(p, "Generate SHA-256", async () => {
+        if (!window.crypto || !crypto.subtle) {
+          output.textContent = "Secure hashing is unavailable in this browser.";
+          return;
+        }
+        try {
+          const bytes = new TextEncoder().encode(input.value);
+          const digest = await crypto.subtle.digest("SHA-256", bytes);
+          output.textContent = Array.from(new Uint8Array(digest))
+            .map(b => b.toString(16).padStart(2,"0")).join("");
+        } catch (_) {
+          output.textContent = "Hash generation failed. Please try again.";
+        }
+      });
+      copyButton(p, () => output.textContent);
+      p.appendChild(make("p", {}, "SHA-256 produces a 256-bit hash. It is not encryption."));
+    }
+
+    if (id === "text-diff-tool") {
+      const a = addField(p, "Original text", "textarea",
+        {rows:"7",placeholder:"Enter the original text..."});
+      const b = addField(p, "New text", "textarea",
+        {rows:"7",placeholder:"Enter the changed text..."});
+      const output = result(p);
+
+      addButton(p, "Compare Texts", () => {
+        const left = a.value.split(/\r?\n/);
+        const right = b.value.split(/\r?\n/);
+        const rows = left.length + 1, cols = right.length + 1;
+
+        if (rows * cols > 1000000) {
+          output.textContent = "These texts are too large for this comparison. Try shorter texts.";
+          return;
+        }
+
+        const dp = Array.from({length:rows}, () => new Uint32Array(cols));
+        for (let i=left.length-1;i>=0;i--) {
+          for (let j=right.length-1;j>=0;j--) {
+            dp[i][j] = left[i] === right[j]
+              ? dp[i+1][j+1]+1
+              : Math.max(dp[i+1][j],dp[i][j+1]);
+          }
+        }
+
+        const changes = [];
+        let i=0,j=0;
+        while(i<left.length && j<right.length) {
+          if(left[i]===right[j]) {
+            changes.push("  " + left[i]);i++;j++;
+          } else if(dp[i+1][j]>=dp[i][j+1]) {
+            changes.push("- " + left[i++]);
+          } else {
+            changes.push("+ " + right[j++]);
+          }
+        }
+        while(i<left.length) changes.push("- " + left[i++]);
+        while(j<right.length) changes.push("+ " + right[j++]);
+
+        output.textContent = changes.join("\n") +
+          "\n\nLegend: - removed, + added, two spaces unchanged.";
+      });
+      copyButton(p, () => output.textContent);
+    }
+
+    if (id === "aspect-tool") {
+      const w = addField(p, "Width (pixels)", "input",
+        {type:"number",min:"1",step:"any",placeholder:"e.g. 1920"});
+      const h = addField(p, "Height (pixels)", "input",
+        {type:"number",min:"1",step:"any",placeholder:"e.g. 1080"});
+      const output = result(p);
+      addButton(p, "Calculate Ratio", () => {
+        const width=Number(w.value), height=Number(h.value);
+        if(!Number.isFinite(width)||!Number.isFinite(height)||width<=0||height<=0) {
+          output.textContent="Enter positive width and height values.";
+          return;
+        }
+        function gcd(a,b) {
+          while(b){const t=b;b=a%b;a=t;}
+          return a;
+        }
+        const factor=gcd(width,height);
+        output.textContent =
+          "Aspect ratio: " + (width/factor) + ":" + (height/factor) +
+          "\nDecimal ratio: " + (width/height).toFixed(4) +
+          "\nWidth: " + width + " px" +
+          "\nHeight: " + height + " px";
+      });
+      const ratio = addField(p, "Target ratio", "select", {});
+      [["16:9","16:9 — Video"],["9:16","9:16 — Vertical video"],["4:3","4:3"],["1:1","1:1 — Square"],["3:2","3:2"],["21:9","21:9 — Ultrawide"]]
+        .forEach(([v,label])=>ratio.appendChild(make("option",{value:v},label)));
+      addButton(p, "Calculate Height from Width", () => {
+        const width=Number(w.value);
+        if(!Number.isFinite(width)||width<=0) {
+          output.textContent="Enter a positive width first.";return;
+        }
+        const [rw,rh]=ratio.value.split(":").map(Number);
+        output.textContent="Height: "+(width*rh/rw)+" px\nRatio: "+ratio.value;
+      });
+    }
+
+    if (id === "regex-tool") {
+      const pattern = addField(p, "Regular expression (without / /)", "input",
+        {type:"text",placeholder:"e.g. \\d+"});
+      const flags = addField(p, "Flags", "input",
+        {type:"text",placeholder:"e.g. gi",value:"g"});
+      const sample = addField(p, "Test text", "textarea",
+        {rows:"6",placeholder:"Enter text to search..."});
+      const output = result(p);
+
+      addButton(p, "Test Regex", () => {
+        try {
+          if(pattern.value.length>500 || sample.value.length>20000) {
+            output.textContent="Please use a pattern under 500 characters and text under 20,000 characters.";
+            return;
+          }
+          if(!/^[dgimsuvy]*$/.test(flags.value) ||
+             new Set(flags.value).size!==flags.value.length) {
+            output.textContent="Invalid flags. Use supported flags such as g, i, m, s, or u without duplicates.";
+            return;
+          }
+          const re=new RegExp(pattern.value,flags.value);
+          const matches=[];
+          if(re.global||re.sticky) {
+            let m, count=0;
+            while((m=re.exec(sample.value))!==null && count<500) {
+              matches.push(m[0]+"  (index "+m.index+")");
+              count++;
+              if(m[0]==="") re.lastIndex++;
+            }
+          } else {
+            const m=re.exec(sample.value);
+            if(m) matches.push(m[0]+"  (index "+m.index+")");
+          }
+          output.textContent=matches.length
+            ? "Matches found: "+matches.length+"\n"+matches.join("\n")
+            : "No matches found.";
+        } catch(e) {
+          output.textContent="Regex error: "+e.message;
+        }
+      });
+    }
+
+    if (id === "csv-json-tool") {
+      const input = addField(p, "Paste CSV data", "textarea",
+        {rows:"9",placeholder:'name,age,city\nMohit,18,Jaipur\nAlex,20,Delhi'});
+      const output = result(p);
+
+      function parseCSV(text) {
+        const rows=[];let row=[],cell="",quoted=false;
+        for(let i=0;i<text.length;i++) {
+          const c=text[i];
+          if(quoted) {
+            if(c === '"' && text[i+1] === '"') {cell+='"';i++;}
+            else if(c === '"') quoted=false;
+            else cell+=c;
+          } else {
+            if(c==='"' && cell==="") quoted=true;
+            else if(c===","){row.push(cell);cell="";}
+            else if(c==="\n") {
+              row.push(cell.replace(/\r$/,""));rows.push(row);row=[];cell="";
+            } else cell+=c;
+          }
+        }
+        if(quoted) throw Error("A quoted field was not closed.");
+        row.push(cell.replace(/\r$/,""));
+        rows.push(row);
+        return rows.filter(r=>!(r.length===1 && r[0]===""));
+      }
+
+      addButton(p, "Convert CSV to JSON", () => {
+        try {
+          if(!input.value.trim()) {output.textContent="Paste CSV data first.";return;}
+          const rows=parseCSV(input.value);
+          if(rows.length<2) {output.textContent="Include a header row and at least one data row.";return;}
+          const headers=rows[0].map((h,i)=>h.trim()||("column"+(i+1)));
+          const data=rows.slice(1).map(row=>{
+            const obj={};
+            headers.forEach((header,i)=>obj[header]=row[i]??"");
+            return obj;
+          });
+          output.textContent=JSON.stringify(data,null,2);
+        } catch(e) {
+          output.textContent="CSV error: "+e.message;
+        }
+      });
+      copyButton(p, () => output.textContent);
+      p.appendChild(make("p", {}, "Values are kept as strings. Fields containing commas should be enclosed in double quotes."));
+    }
+  }
+})();
+</script>
+
 </html>
 
