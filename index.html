@@ -369,5 +369,154 @@ async function copyText(text,label){
 }
 </script>
 </body>
+
+<style>
+.ewx-panel{display:none;background:#101a16;border:1px solid #245b42;border-radius:14px;padding:20px;margin:20px 0;color:#eafff1}
+.ewx-panel h2{color:#5ee69b}.ewx-panel textarea,.ewx-panel input,.ewx-panel select{box-sizing:border-box;width:100%;padding:11px;margin:8px 0;background:#0a100d;color:#eafff1;border:1px solid #32684d;border-radius:8px}
+.ewx-panel button,.ewx-card button{padding:10px 14px;margin:5px 5px 5px 0;background:#167747;color:white;border:0;border-radius:8px;cursor:pointer}
+.ewx-panel .ewx-output{white-space:pre-wrap;overflow-wrap:anywhere;background:#09110d;padding:12px;border-radius:8px;min-height:35px}
+.ewx-cards{display:contents}.ewx-panel label{display:block;margin-top:10px}
+</style>
+
+<script>
+(function(){
+const tools=[
+ {id:"image-format",name:"Image Format Converter",cat:"Generators",desc:"Convert images to PNG, JPG or WebP.",keywords:"image png jpg jpeg webp converter"},
+ {id:"url-codec",name:"URL Encoder / Decoder",cat:"Developer",desc:"Encode or decode URL text.",keywords:"url encode decode percent link"},
+ {id:"html-entities",name:"HTML Entity Converter",cat:"Developer",desc:"Encode or decode HTML special characters.",keywords:"html entity entities encode decode"},
+ {id:"favicon-maker",name:"Favicon Generator",cat:"Generators",desc:"Turn an image into a 64×64 PNG icon.",keywords:"favicon icon png generator"},
+ {id:"base-converter",name:"Number Base Converter",cat:"Calculators",desc:"Convert binary, decimal, octal and hexadecimal.",keywords:"number base binary decimal octal hexadecimal hex"}
+];
+const grid=document.getElementById("grid");
+if(!grid)return;
+const panelHost=document.getElementById("about")||document.querySelector("footer")||document.body;
+tools.forEach(t=>{
+ const card=document.createElement("article");
+ card.className="card";
+ card.dataset.category=t.cat;
+ card.dataset.keywords=t.keywords;
+ card.innerHTML="";
+ const title=document.createElement("h3");title.textContent=t.name;
+ const desc=document.createElement("p");desc.textContent=t.desc;
+ const btn=document.createElement("button");btn.textContent="Open Tool";
+ btn.dataset.open=t.id;
+ card.append(title,desc,btn);
+ grid.appendChild(card);
+
+ const panel=document.createElement("section");
+ panel.className="tool-panel ewx-panel";
+ panel.id="panel-"+t.id;
+ const heading=document.createElement("h2");heading.textContent=t.name;
+ const intro=document.createElement("p");intro.textContent=t.desc;
+ panel.append(heading,intro);
+ panelHost.parentNode.insertBefore(panel,panelHost);
+ btn.addEventListener("click",()=>{
+   document.querySelectorAll(".ewx-panel").forEach(p=>p.style.display="none");
+   panel.style.display="block";
+   panel.scrollIntoView({behavior:"smooth",block:"start"});
+ });
+ buildTool(t.id,panel);
+});
+function el(tag,attrs={},text){
+ const n=document.createElement(tag);
+ Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));
+ if(text!==undefined)n.textContent=text;
+ return n;
+}
+function field(panel,label,tag="textarea",attrs={}){
+ const l=el("label",{},label), n=el(tag,attrs);
+ panel.append(l,n);return n;
+}
+function button(panel,label,fn){
+ const b=el("button",{type:"button"},label);b.addEventListener("click",fn);panel.append(b);return b;
+}
+function output(panel){
+ const o=el("div",{class:"ewx-output","aria-live":"polite"},"Your result will appear here.");
+ panel.append(o);return o;
+}
+function buildTool(id,p){
+ if(id==="url-codec"){
+  const inp=field(p,"Enter text or URL");const out=output(p);
+  button(p,"Encode URL",()=>{out.textContent=encodeURIComponent(inp.value)});
+  button(p,"Decode URL",()=>{try{out.textContent=decodeURIComponent(inp.value)}catch(e){out.textContent="Invalid encoded URL. Please check the text."}});
+  button(p,"Copy result",()=>navigator.clipboard?.writeText(out.textContent));
+ }
+ if(id==="html-entities"){
+  const inp=field(p,"Enter HTML or text");const out=output(p);
+  button(p,"Encode HTML",()=>{
+   const map={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+   out.textContent=inp.value.replace(/[&<>"']/g,c=>map[c]);
+  });
+  button(p,"Decode HTML",()=>{
+   const area=document.createElement("textarea");area.innerHTML=inp.value;out.textContent=area.value;
+  });
+  button(p,"Copy result",()=>navigator.clipboard?.writeText(out.textContent));
+ }
+ if(id==="image-format"){
+  const file=field(p,"Choose an image","input",{type:"file",accept:"image/*"});
+  const fmt=field(p,"Output format","select");
+  [["image/png","PNG"],["image/jpeg","JPG"],["image/webp","WebP"]].forEach(([v,n])=>fmt.append(el("option",{value:v},n)));
+  const quality=field(p,"Quality for JPG/WebP (0.1–1)","input",{type:"number",min:"0.1",max:"1",step:"0.1",value:"0.9"});
+  const out=output(p);
+  button(p,"Convert & Download",()=>{
+   if(!file.files[0]){out.textContent="Please choose an image first.";return}
+   const img=new Image(),url=URL.createObjectURL(file.files[0]);
+   img.onload=()=>{
+    const c=document.createElement("canvas");c.width=img.naturalWidth;c.height=img.naturalHeight;
+    const ctx=c.getContext("2d");
+    if(fmt.value==="image/jpeg"){ctx.fillStyle="#ffffff";ctx.fillRect(0,0,c.width,c.height)}
+    ctx.drawImage(img,0,0);
+    const q=Math.max(.1,Math.min(1,Number(quality.value)||.9));
+    c.toBlob(blob=>{
+     URL.revokeObjectURL(url);
+     if(!blob){out.textContent="Conversion failed. Try another image.";return}
+     const a=el("a",{download:"converted-image."+({"image/png":"png","image/jpeg":"jpg","image/webp":"webp"}[fmt.value])});
+     a.href=URL.createObjectURL(blob);a.textContent="Download converted image";out.replaceChildren(a);
+    },fmt.value,q);
+   };
+   img.onerror=()=>{URL.revokeObjectURL(url);out.textContent="Could not read this image."};
+   img.src=url;
+  });
+ }
+ if(id==="favicon-maker"){
+  const file=field(p,"Choose an image","input",{type:"file",accept:"image/*"});
+  const out=output(p);
+  button(p,"Generate Favicon PNG",()=>{
+   if(!file.files[0]){out.textContent="Please choose an image first.";return}
+   const img=new Image(),url=URL.createObjectURL(file.files[0]);
+   img.onload=()=>{
+    const c=document.createElement("canvas");c.width=64;c.height=64;
+    c.getContext("2d").drawImage(img,0,0,64,64);
+    URL.revokeObjectURL(url);
+    const a=el("a",{download:"favicon.png"},"Download 64×64 favicon PNG");
+    a.href=c.toDataURL("image/png");out.replaceChildren(a);
+   };
+   img.onerror=()=>{URL.revokeObjectURL(url);out.textContent="Could not read this image."};
+   img.src=url;
+  });
+ }
+ if(id==="base-converter"){
+  const inp=field(p,"Enter a whole number");
+  const base=field(p,"Input number base","select");
+  [["10","Decimal (10)"],["2","Binary (2)"],["8","Octal (8)"],["16","Hexadecimal (16)"]].forEach(([v,n])=>base.append(el("option",{value:v},n)));
+  const out=output(p);
+  button(p,"Convert Number",()=>{
+   let s=inp.value.trim(),neg=s.startsWith("-");
+   if(neg)s=s.slice(1);
+   if(!s){out.textContent="Enter a number first.";return}
+   try{
+    const b=Number(base.value);
+    const pattern={2:/^[01]+$/,8:/^[0-7]+$/,10:/^\d+$/,16:/^[0-9a-f]+$/i}[b];
+    if(!pattern.test(s))throw Error();
+    let n=BigInt((b===10?"":b===2?"0b":b===8?"0o":"0x")+s);
+    if(neg)n=-n;
+    out.textContent="Binary: "+n.toString(2)+"\nDecimal: "+n.toString(10)+"\nOctal: "+n.toString(8)+"\nHexadecimal: "+n.toString(16).toUpperCase();
+   }catch(e){out.textContent="Invalid number for the selected base."}
+  });
+ }
+}
+})();
+</script>
+
 </html>
 
