@@ -5345,6 +5345,505 @@ const $ = (s,p=document) => p.querySelector(s);
     });
   }
 
+  // Emerald World Tools 89–93
+  {
+    const newTools = [
+      {
+        id: "html-formatter-89",
+        name: "HTML Formatter",
+        category: "Developer",
+        icon: "🧩",
+        keywords: "html beautifier formatter indent markup code",
+        description: "Format HTML with readable indentation."
+      },
+      {
+        id: "css-formatter-90",
+        name: "CSS Formatter",
+        category: "Developer",
+        icon: "🎨",
+        keywords: "css beautifier formatter stylesheet indent",
+        description: "Format CSS rules into readable blocks."
+      },
+      {
+        id: "js-syntax-checker-91",
+        name: "JavaScript Syntax Checker",
+        category: "Developer",
+        icon: "✅",
+        keywords: "javascript js syntax validator error check",
+        description: "Check JavaScript syntax without executing the code."
+      },
+      {
+        id: "url-query-parser-92",
+        name: "URL Query String Parser",
+        category: "Developer",
+        icon: "🔗",
+        keywords: "url query string parameters search params parser json",
+        description: "Extract URL parameters and display them as JSON."
+      },
+      {
+        id: "json-schema-93",
+        name: "JSON Schema Generator",
+        category: "Developer",
+        icon: "📋",
+        keywords: "json schema generator object properties types validation",
+        description: "Generate a basic JSON Schema from an example."
+      }
+    ];
+
+    newTools.forEach(function (tool) {
+      if (document.querySelector('[data-ew-extra="' + tool.id + '"]')) return;
+
+      const card = node("article", {
+        className: "card",
+        "data-category": tool.category,
+        "data-keywords": (tool.name + " " + tool.keywords).toLowerCase(),
+        "data-ew-extra": tool.id
+      });
+
+      card.append(
+        node("div", {className:"card-icon"}, tool.icon),
+        node("h3", {}, tool.name),
+        node("p", {className:"card-description"}, tool.description),
+        node("span", {className:"tag"}, tool.category)
+      );
+
+      const openButton = node("button", {
+        type: "button",
+        className: "btn primary"
+      }, "Open Tool →");
+      card.appendChild(openButton);
+
+      const panel = node("section", {
+        id: "ew89-panel-" + tool.id,
+        className: "tool-panel ew75-panel",
+        "aria-label": tool.name
+      });
+
+      const close = node("button", {
+        type: "button",
+        className: "btn ew75-close"
+      }, "✕ Close");
+
+      close.addEventListener("click", function () {
+        panel.style.display = "none";
+      });
+
+      panel.append(
+        close,
+        node("h2", {}, tool.icon + " " + tool.name),
+        node("p", {className:"ew75-description"}, tool.description)
+      );
+
+      const p = node("div", {className:"ew75-content"});
+      panel.appendChild(p);
+      document.body.appendChild(panel);
+
+      openButton.addEventListener("click", function (event) {
+        event.stopPropagation();
+        document.querySelectorAll(".ew75-panel").forEach(function (item) {
+          item.style.display = "none";
+        });
+        panel.style.display = "block";
+        panel.scrollIntoView({behavior:"smooth", block:"start"});
+      });
+
+      grid.appendChild(card);
+
+      function field(label, control) {
+        makeField(p, label, control);
+        return control;
+      }
+
+      function buttons() {
+        return actionRow(p);
+      }
+
+      function setResult(message, error) {
+        showResult(p, message, error);
+      }
+
+      function addCopy(row, output, label) {
+        addButton(row, label || "Copy Output", async function () {
+          if (!output.value) {
+            return setResult("There is no output to copy.", true);
+          }
+          try {
+            await navigator.clipboard.writeText(output.value);
+            setResult("Copied to clipboard!");
+          } catch (_) {
+            output.focus();
+            output.select();
+            setResult("Press Ctrl+C to copy.");
+          }
+        });
+      }
+
+      // 89. HTML Formatter
+      if (tool.id === "html-formatter-89") {
+        const input = field("HTML input", textArea("ew89-html-in", ""));
+        input.rows = 10;
+        input.placeholder = '<div><h1>Hello</h1><p>Welcome!</p></div>';
+
+        const output = field("Formatted HTML", textArea("ew89-html-out", ""));
+        output.rows = 12;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+
+        addButton(row, "Format HTML", function () {
+          const source = input.value.trim();
+          if (!source) return setResult("Paste HTML first.", true);
+
+          // Basic formatter. It is not a full HTML parser.
+          const tokens = source.match(/<!--[\s\S]*?-->|<![^>]*>|<\/?[^>]+>|[^<]+/g);
+          if (!tokens) return setResult("Could not format this HTML.", true);
+
+          const voidTags = new Set([
+            "area","base","br","col","embed","hr","img","input",
+            "link","meta","param","source","track","wbr"
+          ]);
+          const rawTags = new Set(["script","style","pre","textarea"]);
+          let depth = 0;
+          let rawTag = null;
+          const lines = [];
+
+          tokens.forEach(function (token) {
+            const value = token.trim();
+            if (!value) return;
+
+            if (rawTag) {
+              lines.push("  ".repeat(depth) + value);
+              if (new RegExp("</" + rawTag + "\\s*>", "i").test(value)) {
+                rawTag = null;
+                depth = Math.max(0, depth - 1);
+              }
+              return;
+            }
+
+            if (/^<\//.test(value)) {
+              depth = Math.max(0, depth - 1);
+              lines.push("  ".repeat(depth) + value);
+              return;
+            }
+
+            if (/^</.test(value)) {
+              lines.push("  ".repeat(depth) + value);
+
+              const match = value.match(/^<([a-z][\w:-]*)\b/i);
+              const tag = match ? match[1].toLowerCase() : "";
+              const selfClosing = /\/\s*>$/.test(value);
+
+              if (tag && rawTags.has(tag) && !selfClosing) {
+                rawTag = tag;
+                depth++;
+              } else if (tag && !voidTags.has(tag) && !selfClosing &&
+                         !/^<!/.test(value) && !/^<\?/.test(value)) {
+                depth++;
+              }
+            } else {
+              lines.push("  ".repeat(depth) + value);
+            }
+          });
+
+          output.value = lines.join("\n");
+          setResult("HTML formatted with basic indentation. Review the result before using it.");
+        }, true);
+
+        addCopy(row, output);
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Paste HTML to get started.");
+        });
+
+        showResult(p, "This is a basic formatter; complex inline markup and embedded scripts may need manual adjustment.");
+      }
+
+      // 90. CSS Formatter
+      if (tool.id === "css-formatter-90") {
+        const input = field("CSS input", textArea("ew90-css-in", ""));
+        input.rows = 10;
+        input.placeholder = "body{margin:0;color:#123}h1{font-size:2rem}";
+
+        const output = field("Formatted CSS", textArea("ew90-css-out", ""));
+        output.rows = 12;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+
+        addButton(row, "Format CSS", function () {
+          const source = input.value.trim();
+          if (!source) return setResult("Paste CSS first.", true);
+
+          // Lightweight formatter; avoids changing text inside quoted strings.
+          let result = "";
+          let indent = 0;
+          let quote = "";
+          let comment = false;
+          let escaped = false;
+          let line = "";
+
+          function flush() {
+            const value = line.trim();
+            if (value) result += "  ".repeat(Math.max(0, indent)) + value + "\n";
+            line = "";
+          }
+
+          for (let i = 0; i < source.length; i++) {
+            const c = source[i], next = source[i + 1];
+
+            if (comment) {
+              line += c;
+              if (c === "*" && next === "/") {
+                line += "/";
+                i++;
+                comment = false;
+                flush();
+              }
+              continue;
+            }
+
+            if (quote) {
+              line += c;
+              if (escaped) escaped = false;
+              else if (c === "\\") escaped = true;
+              else if (c === quote) quote = "";
+              continue;
+            }
+
+            if (c === "/" && next === "*") {
+              if (line.trim()) flush();
+              line = "/*";
+              i++;
+              comment = true;
+              continue;
+            }
+
+            if (c === '"' || c === "'") {
+              quote = c;
+              line += c;
+            } else if (c === "{") {
+              line = line.trimEnd() + " {";
+              flush();
+              indent++;
+            } else if (c === "}") {
+              if (line.trim()) flush();
+              indent = Math.max(0, indent - 1);
+              result += "  ".repeat(indent) + "}\n";
+            } else if (c === ";") {
+              line = line.trimEnd() + ";";
+              flush();
+            } else if (c === "\n" || c === "\r" || c === "\t") {
+              line += " ";
+            } else {
+              line += c;
+            }
+          }
+
+          if (line.trim()) flush();
+          output.value = result.trim();
+          setResult("CSS formatted. Review comments, strings, and advanced syntax before publishing.");
+        }, true);
+
+        addCopy(row, output);
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Paste CSS to get started.");
+        });
+
+        showResult(p, "Formats common CSS rules. Advanced syntax and unusual strings may require manual review.");
+      }
+
+      // 91. JavaScript Syntax Checker
+      if (tool.id === "js-syntax-checker-91") {
+        const input = field("JavaScript input", textArea("ew91-js-in", ""));
+        input.rows = 11;
+        input.placeholder = 'const greet = name => "Hello, " + name;\nconsole.log(greet("World"));';
+
+        const output = field("Syntax check result", textArea("ew91-js-out", ""));
+        output.rows = 5;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+
+        addButton(row, "Check Syntax", function () {
+          const source = input.value;
+          if (!source.trim()) {
+            output.value = "";
+            return setResult("Paste JavaScript first.", true);
+          }
+
+          try {
+            // Parsing only: the supplied code is not executed.
+            new Function(source);
+            output.value = "No syntax errors detected by the browser parser.";
+            setResult("Syntax check passed. This does not guarantee the code will run correctly.");
+          } catch (error) {
+            output.value = error.name + ": " + error.message;
+            setResult("JavaScript syntax check failed.", true);
+          }
+        }, true);
+
+        addCopy(row, output);
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Paste JavaScript to get started.");
+        });
+
+        showResult(p, "This checks parseable JavaScript syntax without running the code. Top-level import/export statements and environment-specific syntax may need a module-aware checker.");
+      }
+
+      // 92. URL Query String Parser
+      if (tool.id === "url-query-parser-92") {
+        const input = field("Full URL or query string", textInput("ew92-url-in", ""));
+        input.placeholder = "https://example.com/?name=Alex&city=Jaipur";
+
+        const output = field("Parsed parameters (JSON)", textArea("ew92-url-out", ""));
+        output.rows = 10;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+
+        addButton(row, "Parse URL", function () {
+          const source = input.value.trim();
+          if (!source) return setResult("Enter a URL or query string first.", true);
+
+          try {
+            let params;
+
+            if (source.startsWith("?")) {
+              params = new URLSearchParams(source.slice(1));
+            } else if (source.includes("://")) {
+              params = new URL(source).searchParams;
+            } else {
+              params = new URLSearchParams(source);
+            }
+
+            const result = {};
+            params.forEach(function (value, key) {
+              if (Object.prototype.hasOwnProperty.call(result, key)) {
+                if (!Array.isArray(result[key])) result[key] = [result[key]];
+                result[key].push(value);
+              } else {
+                result[key] = value;
+              }
+            });
+
+            output.value = JSON.stringify(result, null, 2);
+            setResult("Parsed " + params.size + " query parameter(s). Repeated keys are kept in arrays.");
+          } catch (_) {
+            output.value = "";
+            setResult("Could not parse this URL or query string.", true);
+          }
+        }, true);
+
+        addCopy(row, output, "Copy JSON");
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Enter a URL to get started.");
+        });
+
+        showResult(p, "Values are URL-decoded automatically. URL fragments are not included in the query parameters.");
+      }
+
+      // 93. JSON Schema Generator
+      if (tool.id === "json-schema-93") {
+        const input = field("Example JSON", textArea("ew93-json-in", ""));
+        input.rows = 10;
+        input.placeholder = '{"name":"Alex","age":21,"active":true,"tags":["web","tools"]}';
+
+        const titleInput = field("Schema title (optional)", textInput("ew93-schema-title", "Generated Schema"));
+
+        const output = field("Generated JSON Schema", textArea("ew93-schema-out", ""));
+        output.rows = 12;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        function inferSchema(value) {
+          if (value === null) return {type:"null"};
+
+          if (Array.isArray(value)) {
+            const schema = {type:"array"};
+            if (value.length) {
+              const first = inferSchema(value[0]);
+              const sameType = value.every(item =>
+                JSON.stringify(inferSchema(item)) === JSON.stringify(first)
+              );
+              schema.items = sameType ? first : {};
+            } else {
+              schema.items = {};
+            }
+            return schema;
+          }
+
+          if (typeof value === "object") {
+            const properties = {};
+            Object.keys(value).forEach(key => {
+              properties[key] = inferSchema(value[key]);
+            });
+
+            return {
+              type:"object",
+              properties:properties,
+              required:Object.keys(value),
+              additionalProperties:false
+            };
+          }
+
+          return {type:typeof value};
+        }
+
+        const row = buttons();
+
+        addButton(row, "Generate Schema", function () {
+          if (!input.value.trim()) return setResult("Paste an example JSON value first.", true);
+
+          try {
+            const value = JSON.parse(input.value);
+            const schema = {
+              "$schema":"https://json-schema.org/draft/2020-12/schema",
+              ...inferSchema(value)
+            };
+
+            if (titleInput.value.trim()) schema.title = titleInput.value.trim();
+
+            output.value = JSON.stringify(schema, null, 2);
+            setResult("Basic JSON Schema generated. Review inferred types and required fields for your use case.");
+          } catch (error) {
+            output.value = "";
+            setResult("Invalid JSON: " + error.message, true);
+          }
+        }, true);
+
+        addCopy(row, output, "Copy Schema");
+
+        addButton(row, "Download Schema", function () {
+          if (!output.value) return setResult("Generate a schema first.", true);
+          downloadText("emerald-world-schema.json", output.value, "application/json;charset=utf-8");
+        });
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Paste JSON to get started.");
+        });
+
+        showResult(p, "This infers a starting schema from one example. Arrays use the first item's structure when types differ; verify the result before relying on it for validation.");
+      }
+    });
+  }
+
   const guard = node("span", {id:"ew5-tools-71-75-loaded"});
   guard.hidden = true;
   document.body.appendChild(guard);
