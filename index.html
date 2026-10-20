@@ -2726,5 +2726,444 @@ drawPomo();
 })();
 </script>
 
+<script>
+(function () {
+  if (document.getElementById("ew10-tools-loaded")) return;
+
+  const grid = document.getElementById("grid");
+  if (!grid) {
+    console.error("Emerald World: #grid not found.");
+    return;
+  }
+
+  const tools = [
+    {n:56,id:"urlparser",icon:"🔗",cat:"Developer",name:"URL Parser",desc:"Break a URL into its protocol, domain, path and query parameters.",keywords:"url parser link query parameters hostname"},
+    {n:57,id:"htmlmd",icon:"🧾",cat:"Converters",name:"HTML to Markdown Converter",desc:"Convert basic HTML headings, links, lists and formatting to Markdown.",keywords:"HTML markdown converter headings links lists"},
+    {n:58,id:"average",icon:"🧮",cat:"Calculators",name:"Average Calculator",desc:"Calculate the mean, median, mode and range of your numbers.",keywords:"average mean median mode range calculator"},
+    {n:59,id:"triangle",icon:"📐",cat:"Calculators",name:"Triangle Calculator",desc:"Calculate a triangle's area, perimeter and angles from its sides.",keywords:"triangle calculator area perimeter sides angles geometry"},
+    {n:60,id:"dice",icon:"🎯",cat:"Generators",name:"Dice Roller",desc:"Roll virtual dice for games, decisions and tabletop adventures.",keywords:"dice roller random dice game"},
+    {n:61,id:"listshuffle",icon:"🔀",cat:"Generators",name:"List Randomizer",desc:"Shuffle a list into a random order or generate a random selection.",keywords:"list randomizer shuffle random order selection"},
+    {n:62,id:"findreplace",icon:"📝",cat:"Text",name:"Find and Replace Text",desc:"Find text in a passage and replace every matching occurrence.",keywords:"find replace search text editor"},
+    {n:63,id:"spaces",icon:"🧹",cat:"Text",name:"Extra Spaces Remover",desc:"Clean repeated spaces and tidy up whitespace in your text.",keywords:"extra spaces remove whitespace clean text"},
+    {n:64,id:"romandate",icon:"📅",cat:"Converters",name:"Roman Numeral Date Formatter",desc:"Convert a date's day, month and year into Roman numerals.",keywords:"Roman numeral date formatter calendar"},
+    {n:65,id:"imagemeta",icon:"🖼️",cat:"Converters",name:"Image Metadata Viewer",desc:"View image dimensions, file size, format and available browser metadata.",keywords:"image metadata dimensions size format image viewer"}
+  ];
+
+  const marker = document.createElement("span");
+  marker.id = "ew10-tools-loaded";
+  marker.hidden = true;
+  grid.appendChild(marker);
+
+  const panels = document.createDocumentFragment();
+
+  tools.forEach(t => {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.dataset.category = t.cat;
+    card.dataset.keywords = t.keywords;
+    card.innerHTML = `
+      <div class="card-icon">${t.icon}</div>
+      <span class="tag">${t.cat}</span>
+      <h3>${t.name}</h3>
+      <p>${t.desc}</p>
+      <button class="btn primary" type="button">Open Tool →</button>
+    `;
+
+    card.querySelector("button").addEventListener("click", () => {
+      document.querySelectorAll(".ew10-panel").forEach(p => p.style.display = "none");
+      const target = document.getElementById("ew10-panel-" + t.id);
+      target.style.display = "block";
+      target.scrollIntoView({behavior:"smooth",block:"start"});
+    });
+    grid.insertBefore(card, marker);
+
+    const panel = document.createElement("section");
+    panel.className = "tool-panel ew10-panel";
+    panel.id = "ew10-panel-" + t.id;
+    panel.style.display = "none";
+    panel.innerHTML = `<h2>${t.icon} ${t.name}</h2><p>${t.desc}</p><div class="tool-content"></div>`;
+    panels.appendChild(panel);
+  });
+
+  marker.remove();
+
+  const about = document.getElementById("about");
+  if (about && about.parentNode) about.parentNode.insertBefore(panels, about);
+  else document.body.appendChild(panels);
+
+  const $ = (p,s) => p.querySelector(s);
+
+  function field(p, label, tag, attrs={}) {
+    const l = document.createElement("label");
+    l.textContent = label;
+    const e = document.createElement(tag);
+    Object.entries(attrs).forEach(([k,v]) => {
+      if (k === "text") e.textContent = v;
+      else e.setAttribute(k,v);
+    });
+    l.appendChild(e);
+    p.appendChild(l);
+    return e;
+  }
+
+  function button(p, text, fn) {
+    const b = document.createElement("button");
+    b.className = "btn primary";
+    b.type = "button";
+    b.textContent = text;
+    b.addEventListener("click", fn);
+    p.appendChild(b);
+    return b;
+  }
+
+  function result(p, text="Your result will appear here.") {
+    let r = $(".result",p);
+    if (!r) {
+      r = document.createElement("div");
+      r.className = "result";
+      p.appendChild(r);
+    }
+    r.textContent = text;
+    return r;
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert("Copied!");
+    } catch {
+      alert("Copy unavailable. Select the result and copy it manually.");
+    }
+  }
+
+  function panel(id) {
+    return $("#ew10-panel-" + id + " .tool-content", document);
+  }
+
+  /* 56 — URL Parser */
+  {
+    const p = panel("urlparser");
+    const input = field(p,"Enter a URL","input",{
+      type:"text",class:"field",placeholder:"https://example.com/page?name=Emerald"
+    });
+    const out = result(p);
+    button(p,"Parse URL",()=>{
+      try {
+        const u = new URL(input.value.trim());
+        const params = Array.from(u.searchParams.entries());
+        out.textContent =
+          "Full URL: " + u.href +
+          "\nProtocol: " + u.protocol +
+          "\nHostname: " + u.hostname +
+          "\nPort: " + (u.port || "(default)") +
+          "\nPath: " + u.pathname +
+          "\nUsername: " + (u.username || "(none)") +
+          "\nPassword: " + (u.password ? "(present)" : "(none)") +
+          "\nHash: " + (u.hash || "(none)") +
+          "\n\nQuery parameters:\n" +
+          (params.length ? params.map(([k,v])=>k+" = "+v).join("\n") : "(none)");
+      } catch {
+        out.textContent = "Invalid URL. Include a valid URL, such as https://example.com.";
+      }
+    });
+    button(p,"Copy Result",()=>copyText(out.textContent));
+  }
+
+  /* 57 — Basic HTML to Markdown Converter */
+  {
+    const p = panel("htmlmd");
+    const input = field(p,"HTML input","textarea",{
+      class:"field",placeholder:"<h1>Hello</h1>\n<p>This is <strong>bold</strong>.</p>"
+    });
+    const out = result(p);
+    button(p,"Convert to Markdown",()=>{
+      const doc = new DOMParser().parseFromString(input.value,"text/html");
+
+      // Remove elements that should never be converted to output text.
+      doc.querySelectorAll("script,style,iframe,object,embed,form,svg").forEach(e=>e.remove());
+
+      function convert(node) {
+        if (node.nodeType === Node.TEXT_NODE) return node.nodeValue;
+        if (node.nodeType !== Node.ELEMENT_NODE) return "";
+        const tag = node.tagName.toLowerCase();
+        const content = Array.from(node.childNodes).map(convert).join("");
+        if (/^h[1-6]$/.test(tag)) {
+          return "\n\n" + "#".repeat(Number(tag[1])) + " " + content.trim() + "\n\n";
+        }
+        if (tag === "strong" || tag === "b") return "**" + content + "**";
+        if (tag === "em" || tag === "i") return "*" + content + "*";
+        if (tag === "del" || tag === "s") return "~~" + content + "~~";
+        if (tag === "code") return "`" + content + "`";
+        if (tag === "pre") return "\n\n```\n" + node.textContent + "\n```\n\n";
+        if (tag === "br") return "\n";
+        if (tag === "hr") return "\n\n---\n\n";
+        if (tag === "a") {
+          const href = node.getAttribute("href") || "";
+          try {
+            const safe = new URL(href,location.href);
+            if (!["http:","https:","mailto:"].includes(safe.protocol)) return content;
+            return "[" + content.trim() + "](" + safe.href + ")";
+          } catch { return content; }
+        }
+        if (tag === "img") {
+          const alt = node.getAttribute("alt") || "Image";
+          const src = node.getAttribute("src") || "";
+          try {
+            const safe = new URL(src,location.href);
+            if (["http:","https:"].includes(safe.protocol))
+              return "![" + alt + "](" + safe.href + ")";
+          } catch {}
+          return alt;
+        }
+        if (tag === "li") return "\n- " + content.trim();
+        if (tag === "ul" || tag === "ol") {
+          let i=0;
+          const items=Array.from(node.children).filter(e=>e.tagName.toLowerCase()==="li");
+          return "\n\n" + items.map(li=>{
+            i++;
+            return tag==="ol" ? i+". "+Array.from(li.childNodes).map(convert).join("").trim() :
+              "- "+Array.from(li.childNodes).map(convert).join("").trim();
+          }).join("\n") + "\n\n";
+        }
+        if (tag === "p" || tag === "div" || tag === "section" || tag === "blockquote")
+          return "\n\n" + content.trim() + "\n\n";
+        return content;
+      }
+
+      const markdown=Array.from(doc.body.childNodes).map(convert).join("")
+        .replace(/[ \t]+\n/g,"\n")
+        .replace(/\n{3,}/g,"\n\n")
+        .trim();
+      out.textContent=markdown || "No convertible text found.";
+    });
+    button(p,"Copy Markdown",()=>copyText(out.textContent));
+  }
+
+  /* 58 — Average Calculator */
+  {
+    const p=panel("average");
+    const input=field(p,"Enter numbers separated by commas or spaces","textarea",{
+      class:"field",placeholder:"10, 20, 30, 40, 50"
+    });
+    const out=result(p);
+    button(p,"Calculate Statistics",()=>{
+      const raw=input.value.trim();
+      if(!raw){out.textContent="Enter some numbers first.";return;}
+      const parts=raw.split(/[\s,;]+/).filter(Boolean);
+      const nums=parts.map(Number);
+      if(nums.some(n=>!Number.isFinite(n))){
+        out.textContent="Please enter only valid numbers separated by commas or spaces.";return;
+      }
+      const sorted=[...nums].sort((a,b)=>a-b);
+      const sum=nums.reduce((a,b)=>a+b,0);
+      const median=sorted.length%2 ? sorted[Math.floor(sorted.length/2)] :
+        (sorted[sorted.length/2-1]+sorted[sorted.length/2])/2;
+      const counts=new Map();
+      nums.forEach(n=>counts.set(n,(counts.get(n)||0)+1));
+      const maxFreq=Math.max(...counts.values());
+      const modes=maxFreq===1?[]:[...counts.entries()].filter(x=>x[1]===maxFreq).map(x=>x[0]);
+      out.textContent=
+        "Count: "+nums.length+
+        "\nSum: "+sum+
+        "\nMean (average): "+(sum/nums.length)+
+        "\nMedian: "+median+
+        "\nMode: "+(modes.length?modes.join(", ")+" (frequency "+maxFreq+")":"No repeated mode")+
+        "\nMinimum: "+sorted[0]+
+        "\nMaximum: "+sorted[sorted.length-1]+
+        "\nRange: "+(sorted[sorted.length-1]-sorted[0]);
+    });
+    button(p,"Copy Result",()=>copyText(out.textContent));
+  }
+
+  /* 59 — Triangle Calculator (three sides) */
+  {
+    const p=panel("triangle");
+    const a=field(p,"Side A","input",{type:"number",class:"field",min:"0",step:"any",value:"3"});
+    const b=field(p,"Side B","input",{type:"number",class:"field",min:"0",step:"any",value:"4"});
+    const c=field(p,"Side C","input",{type:"number",class:"field",min:"0",step:"any",value:"5"});
+    const out=result(p);
+    button(p,"Calculate Triangle",()=>{
+      const sides=[Number(a.value),Number(b.value),Number(c.value)].sort((x,y)=>x-y);
+      if(sides.some(x=>!Number.isFinite(x)||x<=0) ||
+         sides[0]+sides[1]<=sides[2]){
+        out.textContent="Enter three positive sides that satisfy the triangle inequality.";return;
+      }
+      const [x,y,z]=sides;
+      const s=(x+y+z)/2;
+      const area=Math.sqrt(Math.max(0,s*(s-x)*(s-y)*(s-z)));
+      const angle=(u,v,w)=>Math.acos(Math.max(-1,Math.min(1,(v*v+w*w-u*u)/(2*v*w))))*180/Math.PI;
+      const angles=[angle(x,y,z),angle(y,x,z),angle(z,x,y)];
+      out.textContent=
+        "Perimeter: "+(x+y+z).toFixed(4)+
+        "\nArea: "+area.toFixed(4)+
+        "\nSmallest angle: "+angles[0].toFixed(2)+"°"+
+        "\nMiddle angle: "+angles[1].toFixed(2)+"°"+
+        "\nLargest angle: "+angles[2].toFixed(2)+"°"+
+        "\nTriangle type: "+(Math.abs(x-y)<1e-9&&Math.abs(y-z)<1e-9?"Equilateral":Math.abs(x-y)<1e-9||Math.abs(y-z)<1e-9?"Isosceles":"Scalene")+
+        "\nSide lengths are treated in your chosen unit.";
+    });
+  }
+
+  /* 60 — Dice Roller */
+  {
+    const p=panel("dice");
+    const count=field(p,"Number of dice","select");
+    count.innerHTML=[1,2,3,4,5,6,10].map(n=>`<option value="${n}">${n}</option>`).join("");
+    const sides=field(p,"Sides per die","select");
+    sides.innerHTML=[4,6,8,10,12,20,100].map(n=>`<option value="${n}" ${n===6?"selected":""}>D${n}</option>`).join("");
+    const out=result(p,"Roll the dice!");
+    button(p,"🎲 Roll Dice",()=>{
+      const n=Number(count.value),d=Number(sides.value);
+      const rolls=Array.from({length:n},()=>{
+        const max=256-(256%d);
+        const buf=new Uint8Array(1);
+        do{crypto.getRandomValues(buf);}while(buf[0]>=max);
+        return buf[0]%d+1;
+      });
+      out.textContent="Rolls: "+rolls.join(", ")+"\nTotal: "+rolls.reduce((a,b)=>a+b,0);
+    });
+  }
+
+  /* 61 — List Randomizer */
+  {
+    const p=panel("listshuffle");
+    const input=field(p,"Enter one item per line","textarea",{
+      class:"field",placeholder:"Alice\nBob\nCharlie\nDana"
+    });
+    const amount=field(p,"Random selection size (leave 0 to shuffle all)","input",{
+      type:"number",class:"field",min:"0",value:"0"
+    });
+    const out=result(p);
+    button(p,"Shuffle List",()=>{
+      const list=input.value.split(/\r?\n/).filter(x=>x.trim());
+      if(!list.length){out.textContent="Enter at least one item.";return;}
+      for(let i=list.length-1;i>0;i--){
+        const arr=new Uint32Array(1);
+        const limit=Math.floor(4294967296/(i+1))*(i+1);
+        let v;
+        do{crypto.getRandomValues(arr);v=arr[0];}while(v>=limit);
+        const j=v%(i+1);
+        [list[i],list[j]]=[list[j],list[i]];
+      }
+      const n=Number(amount.value);
+      if(!Number.isInteger(n)||n<0){out.textContent="Enter a valid non-negative selection size.";return;}
+      const selected=n>0?list.slice(0,Math.min(n,list.length)):list;
+      out.textContent=selected.join("\n")+
+        "\n\nItems shown: "+selected.length+" · Items available: "+list.length;
+    });
+    button(p,"Copy Result",()=>copyText(out.textContent.split("\n\nItems shown:")[0]));
+  }
+
+  /* 62 — Find and Replace */
+  {
+    const p=panel("findreplace");
+    const input=field(p,"Original text","textarea",{class:"field",placeholder:"Enter the text to edit..."});
+    const find=field(p,"Find","input",{type:"text",class:"field",placeholder:"Text to find"});
+    const replace=field(p,"Replace with","input",{type:"text",class:"field",placeholder:"Replacement text"});
+    const sensitive=field(p,"Options","input",{type:"checkbox"});
+    sensitive.style.width="auto";
+    sensitive.parentElement.appendChild(document.createTextNode(" Case-sensitive"));
+    const out=result(p);
+    button(p,"Find & Replace All",()=>{
+      if(!find.value){out.textContent="Enter text to find.";return;}
+      const escaped=find.value.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      const re=new RegExp(escaped,sensitive.checked?"g":"gi");
+      const matches=input.value.match(new RegExp(escaped,sensitive.checked?"g":"gi"))||[];
+      out.textContent=input.value.replace(re,()=>replace.value)+
+        "\n\nReplacements made: "+matches.length;
+    });
+    button(p,"Copy Result",()=>copyText(out.textContent.split("\n\nReplacements made:")[0]));
+  }
+
+  /* 63 — Extra Spaces Remover */
+  {
+    const p=panel("spaces");
+    const input=field(p,"Text to clean","textarea",{class:"field",placeholder:"Paste text containing extra spaces..."});
+    const mode=field(p,"Cleaning mode","select");
+    mode.innerHTML=
+      '<option value="repeat">Replace repeated spaces with one</option>'+
+      '<option value="trim">Trim each line and remove repeated spaces</option>'+
+      '<option value="all">Normalize all whitespace to single spaces</option>';
+    const out=result(p);
+    button(p,"Clean Text",()=>{
+      let s=input.value;
+      if(mode.value==="repeat")s=s.replace(/[ \t]{2,}/g," ");
+      else if(mode.value==="trim")s=s.split(/\r?\n/).map(line=>line.trim().replace(/[ \t]{2,}/g," ")).join("\n");
+      else s=s.replace(/\s+/g," ").trim();
+      out.textContent=s;
+    });
+    button(p,"Copy Result",()=>copyText(out.textContent));
+  }
+
+  /* 64 — Date to Roman Numerals */
+  {
+    const p=panel("romandate");
+    const input=field(p,"Choose a date","input",{type:"date",class:"field"});
+    const style=field(p,"Date format","select");
+    style.innerHTML=
+      '<option value="dmy">Day / Month / Year</option>'+
+      '<option value="mdy">Month / Day / Year</option>'+
+      '<option value="ymd">Year / Month / Day</option>';
+    const out=result(p);
+    function roman(n){
+      if(!Number.isInteger(n)||n<1||n>3999)throw Error("Value must be between 1 and 3999.");
+      const vals=[[1000,"M"],[900,"CM"],[500,"D"],[400,"CD"],[100,"C"],[90,"XC"],[50,"L"],[40,"XL"],[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]];
+      let s="";
+      for(const [v,sym] of vals)while(n>=v){s+=sym;n-=v;}
+      return s;
+    }
+    button(p,"Convert Date",()=>{
+      if(!input.value){out.textContent="Choose a date first.";return;}
+      const [year,month,day]=input.value.split("-").map(Number);
+      if(year<1||year>3999){out.textContent="This converter supports years 1–3999.";return;}
+      const values={d:roman(day),m:roman(month),y:roman(year)};
+      const format=style.value;
+      const result=format==="dmy"?values.d+" / "+values.m+" / "+values.y:
+        format==="mdy"?values.m+" / "+values.d+" / "+values.y:
+        values.y+" / "+values.m+" / "+values.d;
+      out.textContent="Roman numeral date: "+result+
+        "\nDay: "+values.d+"\nMonth: "+values.m+"\nYear: "+values.y+
+        "\n\nThis is a modern conversion of date numbers, not a universal historical Roman date convention.";
+    });
+  }
+
+  /* 65 — Image Metadata Viewer */
+  {
+    const p=panel("imagemeta");
+    const input=field(p,"Choose an image","input",{type:"file",accept:"image/*",class:"field"});
+    const out=result(p,"Choose an image to inspect its basic metadata.");
+    const preview=document.createElement("img");
+    preview.alt="Selected image preview";
+    preview.style.cssText="display:none;max-width:100%;max-height:300px;border-radius:12px;margin-top:12px;";
+    p.appendChild(preview);
+    button(p,"Inspect Image",()=>{
+      const f=input.files&&input.files[0];
+      if(!f){out.textContent="Choose an image first.";return;}
+      if(!f.type.startsWith("image/")){out.textContent="Please select an image file.";return;}
+      const url=URL.createObjectURL(f);
+      const img=new Image();
+      img.onload=()=>{
+        preview.src=url;preview.style.display="block";
+        out.textContent=
+          "File name: "+f.name+
+          "\nFile format: "+(f.type||"Unknown")+
+          "\nFile size: "+(f.size/1024).toFixed(2)+" KB"+
+          "\nDimensions: "+img.naturalWidth+" × "+img.naturalHeight+" pixels"+
+          "\nAspect ratio: "+(img.naturalWidth/img.naturalHeight).toFixed(4)+
+          "\nLast modified: "+(f.lastModified?new Date(f.lastModified).toLocaleString():"Unknown")+
+          "\n\nNote: EXIF camera/location metadata is not extracted by this basic viewer.";
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);out.textContent="Could not read this image. Try another supported image file.";};
+      img.src=url;
+    });
+  }
+
+  const search=document.getElementById("search");
+  if(search)search.dispatchEvent(new Event("input",{bubbles:true}));
+
+  console.log("Emerald World Tools batch 56–65 loaded.");
+})();
+</script>
+
 </html>
 
