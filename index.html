@@ -4419,11 +4419,16 @@ const $ = (s,p=document) => p.querySelector(s);
     showResult(p, "Your binary art will appear here.");
   }
 
+
   // 75. Team Generator
   {
-    const p = panels["team-generator"].content;
-    const names = textArea("ew75-team-names",
-      "Enter one name per line:\nAlex\nSam\nJordan\nTaylor");
+    const p = panels["team-generator"];
+
+    const names = textArea(
+      "ew75-team-names",
+      "Enter one name per line:\nAlex\nSam\nJordan\nTaylor"
+    );
+    names.rows = 8;
     makeField(p, "Names (one per line)", names);
 
     const size = textInput("ew75-team-size", "2", "number");
@@ -4432,11 +4437,14 @@ const $ = (s,p=document) => p.querySelector(s);
     makeField(p, "People per team", size);
 
     const shuffle = node("input", {
-      type:"checkbox",
-      id:"ew75-team-shuffle"
+      type: "checkbox",
+      id: "ew75-team-shuffle"
     });
     shuffle.checked = true;
-    const checkWrap = node("div", {className:"ew75-field ew75-check"});
+
+    const checkWrap = node("div", {
+      className: "ew75-field ew75-check"
+    });
     const checkLabel = node("label", {});
     checkLabel.htmlFor = shuffle.id;
     checkLabel.textContent = "Shuffle names randomly before splitting";
@@ -4444,30 +4452,38 @@ const $ = (s,p=document) => p.querySelector(s);
     p.appendChild(checkWrap);
 
     const output = textArea("ew75-team-output", "");
-    output.classList.add("ew75-output");
+    output.rows = 10;
     output.readOnly = true;
+    output.classList.add("ew75-output");
     makeField(p, "Generated teams", output);
 
     const row = actionRow(p);
+
     addButton(row, "Generate Teams", function () {
-      let list = names.value.split(/\r?\n/)
-        .map(s => s.trim())
+      const list = names.value
+        .split(/\r?\n/)
+        .map(name => name.trim())
         .filter(Boolean);
 
       if (list.length < 2) {
-        showResult(p, "Enter at least two names.", true);
+        showResult(p, "Please enter at least two names.", true);
         return;
       }
+
       if (list.length > 500) {
-        showResult(p, "Please use 500 names or fewer.", true);
+        showResult(p, "Please enter 500 names or fewer.", true);
         return;
       }
 
       const perTeam = Number(size.value);
-      if (!Number.isInteger(perTeam) || perTeam < 1 ||
-          perTeam > list.length) {
-        showResult(p, "Team size must be a whole number from 1 to " +
-          list.length + ".", true);
+
+      if (!Number.isInteger(perTeam) ||
+          perTeam < 1 || perTeam > list.length) {
+        showResult(
+          p,
+          "People per team must be between 1 and " + list.length + ".",
+          true
+        );
         return;
       }
 
@@ -4478,25 +4494,41 @@ const $ = (s,p=document) => p.querySelector(s);
         }
       }
 
-      const teamCount = Math.ceil(list.length / perTeam);
-      const teams = Array.from({length:teamCount}, () => []);
+      const teams = [];
+      for (let i = 0; i < list.length; i += perTeam) {
+        teams.push(list.slice(i, i + perTeam));
+      }
 
-      list.forEach(function (name, i) {
-        teams[i % teamCount].push(name);
-      });
+      output.value = teams.map((team, i) =>
+        "Team " + (i + 1) + "\n" +
+        team.map(name => "• " + name).join("\n")
+      ).join("\n\n");
 
-      output.value = teams.map(function (team, i) {
-        return "Team " + (i + 1) + "\n" +
-          team.map(name => "• " + name).join("\n");
-      }).join("\n\n");
-
-      showResult(p, "Created " + teams.length + " teams from " +
-        list.length + " people. Teams may differ by one person.");
+      showResult(
+        p,
+        "Successfully created " + teams.length + " teams!"
+      );
     }, true);
+
+    addButton(row, "Copy Teams", async function () {
+      if (!output.value) {
+        showResult(p, "Generate teams first.", true);
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(output.value);
+        showResult(p, "Teams copied successfully!");
+      } catch (_) {
+        output.focus();
+        output.select();
+        showResult(p, "Press Ctrl+C to copy the selected teams.");
+      }
+    });
 
     addButton(row, "Download TXT", function () {
       if (!output.value) {
-        showResult(p, "Generate the teams first.", true);
+        showResult(p, "Generate teams first.", true);
         return;
       }
       downloadText("emerald-world-teams.txt", output.value);
@@ -4504,14 +4536,18 @@ const $ = (s,p=document) => p.querySelector(s);
 
     addButton(row, "Clear", function () {
       names.value = "";
-      output.value = "";
       size.value = "2";
       shuffle.checked = true;
+      output.value = "";
       showResult(p, "Enter names to create teams.");
     });
-    addCopyButton(p, output);
-    showResult(p, "Enter names and choose how many people should be on each team.");
+
+    showResult(
+      p,
+      "Enter names and choose how many people should be on each team."
+    );
   }
+
 
   const guard = node("span", {id:"ew5-tools-71-75-loaded"});
   guard.hidden = true;
