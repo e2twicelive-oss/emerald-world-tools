@@ -613,5 +613,142 @@ function buildTool(id,p){
 }
 </style>
 
+<script>
+(function(){
+const grid=document.getElementById("grid");
+if(!grid)return;
+const defs=[
+["word-html","📝","Word to HTML Converter","Text","Convert text into HTML safely."],
+["markdown-editor","📄","Markdown Editor","Developer","Write Markdown and preview formatted output."],
+["uuid-maker","🆔","UUID Generator","Generators","Generate unique identifiers."],
+["timestamp-converter","🕒","Unix Timestamp Converter","Calculators","Convert Unix timestamps and dates."],
+["palette-maker","🎨","Color Palette Generator","Generators","Generate a palette of colors."]
+];
+const $=(tag,attrs={},txt)=>{
+ const e=document.createElement(tag);
+ Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+ if(txt!==undefined)e.textContent=txt;
+ return e;
+};
+const style=document.createElement("style");
+style.textContent=`
+.ewx-new-panel{display:none;background:#101d16;color:#eafff1;border:1px solid #286744;border-radius:16px;padding:22px;margin:20px 0}
+.ewx-new-panel h2{color:#66f0a0}
+.ewx-new-panel input,.ewx-new-panel textarea,.ewx-new-panel select{box-sizing:border-box;width:100%;padding:12px;margin:8px 0;background:#09110d;color:#eafff1;border:1px solid #32684d;border-radius:9px}
+.ewx-new-panel button{background:linear-gradient(135deg,#16864b,#26bd70);color:white;border:1px solid #45db87;border-radius:9px;padding:11px 15px;margin:5px;cursor:pointer}
+.ewx-new-panel .ewx-result{background:#09110d;border:1px solid #245b42;border-radius:10px;padding:13px;margin-top:12px;overflow-wrap:anywhere;white-space:pre-wrap}
+.ewx-new-panel .ewx-swatches{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.ewx-new-panel .ewx-swatch{flex:1 1 90px;min-width:90px;border-radius:10px;overflow:hidden;border:1px solid #32684d}
+.ewx-new-panel .ewx-chip{height:75px}
+.ewx-new-panel .ewx-swatch button{width:calc(100% - 10px);padding:7px;margin:5px}
+`;
+document.head.appendChild(style);
+const about=document.getElementById("about");
+const host=about||document.querySelector("footer")||document.body;
+defs.forEach(([id,icon,name,cat,desc])=>{
+ if(document.getElementById("panel-"+id))return;
+ const card=$("article",{class:"card","data-category":cat,"data-keywords":name.toLowerCase()+" "+desc.toLowerCase()});
+ const h=$("h3",{},icon+"  "+name);
+ const d=$("p",{},desc);
+ const b=$("button",{type:"button","data-open":id},"Open Tool");
+ card.append(h,d,b);grid.appendChild(card);
+ const panel=$("section",{class:"ewx-new-panel tool-panel",id:"panel-"+id});
+ panel.append($("h2",{},icon+" "+name),$("p",{},desc));
+ host.parentNode.insertBefore(panel,host);
+ b.addEventListener("click",()=>{
+  document.querySelectorAll(".ewx-new-panel").forEach(x=>x.style.display="none");
+  panel.style.display="block";
+  panel.scrollIntoView({behavior:"smooth",block:"start"});
+ });
+ build(id,panel);
+});
+function addBtn(p,text,fn){
+ const b=$("button",{type:"button"},text);b.addEventListener("click",fn);p.appendChild(b);return b;
+}
+function input(p,label,tag,attrs={}){
+ p.appendChild($("label",{},label));
+ const e=$(tag,attrs);p.appendChild(e);return e;
+}
+function result(p){const r=$("div",{class:"ewx-result","aria-live":"polite"},"Your result will appear here.");p.appendChild(r);return r}
+function copy(p,get){addBtn(p,"Copy result",()=>navigator.clipboard?.writeText(get()).catch(()=>{}))}
+function build(id,p){
+ if(id==="word-html"){
+  const t=input(p,"Enter your text","textarea",{rows:"7",placeholder:"Write or paste your text here..."});
+  const r=result(p);
+  addBtn(p,"Convert to HTML",()=>{r.textContent=t.value.split(/\r?\n/).map(line=>line?("<p>"+line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")+"</p>"):"<br>").join("\n")});
+  copy(p,()=>r.textContent);
+ }
+ if(id==="markdown-editor"){
+  const t=input(p,"Markdown input","textarea",{rows:"8",placeholder:"# Heading\nWrite **bold** text here..."});
+  const r=result(p);
+  addBtn(p,"Preview Markdown",()=>{
+   const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+   const html=t.value.split(/\r?\n/).map(line=>{
+    if(/^### /.test(line))return "<h3>"+esc(line.slice(4))+"</h3>";
+    if(/^## /.test(line))return "<h2>"+esc(line.slice(3))+"</h2>";
+    if(/^# /.test(line))return "<h1>"+esc(line.slice(2))+"</h1>";
+    if(/^- /.test(line))return "• "+esc(line.slice(2));
+    return esc(line).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\*(.+?)\*/g,"<em>$1</em>");
+   }).join("<br>");
+   r.replaceChildren();
+   const preview=$("div");preview.style.cssText="background:#f4fff7;color:#15251b;padding:15px;border-radius:8px;white-space:normal";
+   preview.innerHTML=html;r.appendChild(preview);
+  });
+  addBtn(p,"Show HTML source",()=>{
+   const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+   r.textContent=t.value.split(/\r?\n/).map(line=>/^### /.test(line)?"<h3>"+esc(line.slice(4))+"</h3>":/^## /.test(line)?"<h2>"+esc(line.slice(3))+"</h2>":/^# /.test(line)?"<h1>"+esc(line.slice(2))+"</h1>":"<p>"+esc(line)+"</p>").join("\n");
+  });
+  copy(p,()=>r.innerText);
+ }
+ if(id==="uuid-maker"){
+  const count=input(p,"How many IDs? (1–20)","input",{type:"number",min:"1",max:"20",value:"5"});
+  const r=result(p);
+  addBtn(p,"Generate UUIDs",()=>{
+   const n=Math.max(1,Math.min(20,parseInt(count.value)||1));
+   r.textContent=Array.from({length:n},()=>crypto.randomUUID?crypto.randomUUID(): "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const v=Math.random()*16|0;return(c==="x"?v:(v&3|8)).toString(16)})).join("\n");
+  });
+  copy(p,()=>r.textContent);
+ }
+ if(id==="timestamp-converter"){
+  const t=input(p,"Unix timestamp (seconds or milliseconds)","input",{type:"text",placeholder:"e.g. 1790000000"});
+  const r=result(p);
+  addBtn(p,"Timestamp → Date",()=>{
+   const n=Number(t.value.trim());
+   if(!Number.isFinite(n)){r.textContent="Enter a valid timestamp.";return}
+   const ms=Math.abs(n)<1e11?n*1000:n;
+   const d=new Date(ms);
+   r.textContent=Number.isNaN(d.getTime())?"Timestamp is out of range.":"Local: "+d.toLocaleString()+"\nUTC: "+d.toISOString();
+  });
+  const date=input(p,"Date and time","input",{type:"datetime-local"});
+  addBtn(p,"Date → Timestamp",()=>{
+   if(!date.value){r.textContent="Choose a date and time.";return}
+   const ms=new Date(date.value).getTime();
+   r.textContent="Seconds: "+Math.floor(ms/1000)+"\nMilliseconds: "+ms;
+  });
+  copy(p,()=>r.textContent);
+ }
+ if(id==="palette-maker"){
+  const base=input(p,"Choose a starting color","input",{type:"color",value:"#22c55e"});
+  const r=result(p);
+  addBtn(p,"Generate Palette",()=>{
+   const hex=base.value.slice(1);
+   const n=parseInt(hex,16),rr=n>>16,gg=n>>8&255,bb=n&255;
+   const colors=[base.value,...[0.25,0.5,0.75].map(f=>"#"+[rr,gg,bb].map(c=>Math.round(c+(255-c)*f).toString(16).padStart(2,"0")).join("")),...[0.2,0.4].map(f=>"#"+[rr,gg,bb].map(c=>Math.round(c*(1-f)).toString(16).padStart(2,"0")).join(""))];
+   r.replaceChildren();const sw=$("div",{class:"ewx-swatches"});
+   colors.forEach(color=>{
+    const box=$("div",{class:"ewx-swatch"});
+    const chip=$("div",{class:"ewx-chip"});chip.style.background=color;
+    const code=$("div",{},color);code.style.cssText="text-align:center;padding:5px";
+    const cp=$("button",{type:"button"},"Copy HEX");
+    cp.addEventListener("click",()=>navigator.clipboard?.writeText(color).catch(()=>{}));
+    box.append(chip,code,cp);sw.appendChild(box);
+   });
+   r.appendChild(sw);
+  });
+ }
+}
+})();
+</script>
+
 </html>
 
