@@ -6889,7 +6889,556 @@ const $ = (s,p=document) => p.querySelector(s);
 
     grid.appendChild(card);
   });
-}  
+}
+
+/* Emerald World Tools — Batch 104–108 */
+{
+  const newTools = [
+    {
+      id: "svg-to-png-104",
+      name: "SVG to PNG Converter",
+      category: "Tools",
+      icon: "🖼️",
+      description: "Convert SVG graphics into downloadable PNG images in your browser.",
+      keywords: "svg png image converter graphics download",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const file = node("input", { type: "file", accept: ".svg,image/svg+xml" });
+        const width = textInput("ew104-width", "1000");
+        width.type = "number";
+        width.min = "1";
+        const preview = node("img", {});
+        preview.alt = "PNG preview";
+        preview.style.cssText = "display:none;max-width:100%;height:auto;margin:12px 0;";
+        const canvas = node("canvas", {});
+        canvas.style.display = "none";
+        let pngUrl = "";
+        field("Choose an SVG file", file);
+        field("Output width (pixels)", width);
+        p.append(preview, canvas);
+        const row = buttons();
+
+        addButton(row, "Convert to PNG", function () {
+          const chosen = file.files && file.files[0];
+          if (!chosen) return setResult("Choose an SVG file first.", true);
+          if (chosen.size > 5 * 1024 * 1024) return setResult("Please choose an SVG smaller than 5 MB.", true);
+
+          const reader = new FileReader();
+          reader.onload = function () {
+            try {
+              const source = String(reader.result || "");
+              if (!/<svg[\s>]/i.test(source)) return setResult("That file does not appear to contain SVG markup.", true);
+              if (/<script\b|<foreignObject\b|on\w+\s*=|javascript:/i.test(source)) {
+                return setResult("This SVG contains active or embedded content. Use a simple, trusted SVG file.", true);
+              }
+
+              const blob = new Blob([source], { type: "image/svg+xml" });
+              const objectUrl = URL.createObjectURL(blob);
+              const img = new Image();
+
+              img.onload = function () {
+                const w = Math.max(1, Math.min(4096, Number(width.value) || 1000));
+                const ratio = img.naturalWidth && img.naturalHeight ? img.naturalHeight / img.naturalWidth : 1;
+                canvas.width = w;
+                canvas.height = Math.max(1, Math.min(4096, Math.round(w * ratio)));
+                const ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                canvas.toBlob(function (blobPng) {
+                  URL.revokeObjectURL(objectUrl);
+                  if (!blobPng) return setResult("PNG conversion failed. Try another SVG.", true);
+                  if (pngUrl) URL.revokeObjectURL(pngUrl);
+                  pngUrl = URL.createObjectURL(blobPng);
+                  preview.src = pngUrl;
+                  preview.style.display = "block";
+                  setResult("SVG converted successfully!");
+                }, "image/png");
+              };
+
+              img.onerror = function () {
+                URL.revokeObjectURL(objectUrl);
+                setResult("Could not read this SVG. Try a simpler SVG file.", true);
+              };
+              img.src = objectUrl;
+            } catch (_) {
+              setResult("Conversion failed. Please try another SVG file.", true);
+            }
+          };
+          reader.onerror = function () { setResult("Could not read that file.", true); };
+          reader.readAsText(chosen);
+        });
+
+        addButton(row, "Download PNG", function () {
+          if (!pngUrl) return setResult("Convert an SVG first.", true);
+          const a = node("a", { href: pngUrl, download: "emerald-world-image.png" });
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setResult("PNG download started.");
+        });
+      }
+    },
+    {
+      id: "image-comparison-105",
+      name: "Image Comparison Slider",
+      category: "Tools",
+      icon: "↔️",
+      description: "Compare two images with a draggable before-and-after slider.",
+      keywords: "image comparison before after slider compare photos",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const beforeFile = node("input", { type: "file", accept: "image/*" });
+        const afterFile = node("input", { type: "file", accept: "image/*" });
+        const range = node("input", { type: "range", min: "0", max: "100", value: "50" });
+
+        const stage = node("div", {});
+        stage.style.cssText = "position:relative;overflow:hidden;width:100%;max-width:700px;background:#eee;margin:12px auto;line-height:0;";
+
+        const before = node("img", {});
+        const after = node("img", {});
+        before.alt = "Before image";
+        after.alt = "After image";
+
+        before.style.cssText = "display:block;width:100%;height:auto;";
+        after.style.cssText = "display:block;width:100%;height:100%;object-fit:contain;max-width:none;";
+
+        stage.appendChild(before);
+
+        const overlay = node("div", {});
+        overlay.style.cssText = "position:absolute;inset:0;overflow:hidden;width:50%;";
+        overlay.appendChild(after);
+        stage.appendChild(overlay);
+
+        const divider = node("div", {});
+        divider.style.cssText = "position:absolute;top:0;bottom:0;left:50%;width:3px;background:#16a34a;pointer-events:none;";
+        stage.appendChild(divider);
+
+        const hint = node("p", {}, "Choose two images to compare.");
+        field("Before image", beforeFile);
+        field("After image", afterFile);
+        p.append(stage, range, hint);
+
+        let beforeUrl = "";
+        let afterUrl = "";
+
+        function update() {
+          overlay.style.width = range.value + "%";
+          divider.style.left = range.value + "%";
+        }
+
+        range.addEventListener("input", update);
+
+        function loadFile(input, img, isBefore) {
+          const f = input.files && input.files[0];
+          if (!f) return;
+          if (!f.type.startsWith("image/")) return setResult("Please select a valid image.", true);
+          if (f.size > 10 * 1024 * 1024) return setResult("Please choose images smaller than 10 MB.", true);
+
+          const url = URL.createObjectURL(f);
+          img.onload = function () {
+            if (isBefore) {
+              if (beforeUrl) URL.revokeObjectURL(beforeUrl);
+              beforeUrl = url;
+            } else {
+              if (afterUrl) URL.revokeObjectURL(afterUrl);
+              afterUrl = url;
+            }
+            hint.textContent = "Drag the slider to compare both images.";
+            setResult("Image loaded.");
+          };
+
+          img.onerror = function () {
+            URL.revokeObjectURL(url);
+            setResult("Could not load that image.", true);
+          };
+          img.src = url;
+        }
+
+        beforeFile.addEventListener("change", function () { loadFile(beforeFile, before, true); });
+        afterFile.addEventListener("change", function () { loadFile(afterFile, after, false); });
+        update();
+      }
+    },
+    {
+      id: "html-to-markdown-106",
+      name: "HTML to Markdown Converter",
+      category: "Tools",
+      icon: "📄",
+      description: "Convert common HTML headings, links, lists, and formatting to Markdown.",
+      keywords: "html markdown converter developer writing",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const input = textArea("ew106-html", "");
+        input.placeholder = "<h1>Hello</h1>\n<p>This is <strong>bold</strong>.</p>";
+
+        const output = textArea("ew106-md", "");
+        output.readOnly = true;
+        field("HTML input", input);
+        field("Markdown output", output);
+
+        function convert() {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(input.value, "text/html");
+
+          function walk(el) {
+            if (el.nodeType === Node.TEXT_NODE) return el.nodeValue || "";
+            if (el.nodeType !== Node.ELEMENT_NODE) return "";
+
+            const tag = el.tagName.toLowerCase();
+            const inner = Array.from(el.childNodes).map(walk).join("");
+
+            if (/^h[1-6]$/.test(tag)) return "\n" + "#".repeat(Number(tag[1])) + " " + inner.trim() + "\n\n";
+            if (tag === "p" || tag === "div") return inner.trim() + "\n\n";
+            if (tag === "br") return "\n";
+            if (tag === "strong" || tag === "b") return "**" + inner + "**";
+            if (tag === "em" || tag === "i") return "*" + inner + "*";
+            if (tag === "del" || tag === "s" || tag === "strike") return "~~" + inner + "~~";
+            if (tag === "code") return "`" + inner + "`";
+            if (tag === "pre") return "\n```\n" + el.textContent.trim() + "\n```\n\n";
+
+            if (tag === "a") {
+              const href = el.getAttribute("href") || "";
+              return "[" + inner.trim() + "](" + href.replace(/\)/g, "%29") + ")";
+            }
+
+            if (tag === "img") return "![" + (el.getAttribute("alt") || "") + "](" + (el.getAttribute("src") || "") + ")";
+            if (tag === "li") return "- " + inner.trim() + "\n";
+            if (tag === "ul" || tag === "ol") return "\n" + inner + "\n";
+
+            if (tag === "blockquote") {
+              return "\n" + inner.trim().split("\n").map(function (line) {
+                return "> " + line;
+              }).join("\n") + "\n\n";
+            }
+
+            if (tag === "hr") return "\n---\n\n";
+            return inner;
+          }
+
+          output.value = walk(doc.body).replace(/\n{3,}/g, "\n\n").trim();
+          setResult("Converted HTML to Markdown.");
+        }
+
+        const row = buttons();
+        addButton(row, "Convert", convert);
+
+        addButton(row, "Copy Markdown", async function () {
+          if (!output.value) return setResult("Convert some HTML first.", true);
+          try {
+            await navigator.clipboard.writeText(output.value);
+            setResult("Markdown copied!");
+          } catch (_) {
+            output.focus();
+            output.select();
+            setResult("Press Ctrl+C to copy.");
+          }
+        });
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Fields cleared.");
+        });
+      }
+    },
+    {
+      id: "privacy-policy-generator-107",
+      name: "Website Privacy Policy Generator",
+      category: "Tools",
+      icon: "🛡️",
+      description: "Create an editable starter privacy policy for your website.",
+      keywords: "privacy policy generator website template cookies contact data",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const site = textInput("ew107-site", "");
+        site.placeholder = "Website or business name";
+
+        const url = textInput("ew107-url", "");
+        url.placeholder = "https://example.com";
+
+        const email = textInput("ew107-email", "");
+        email.placeholder = "Contact email";
+
+        const collected = textInput("ew107-data", "Contact details, usage data");
+
+        const cookies = node("select", {});
+        [
+          ["yes", "Yes, I use cookies or analytics"],
+          ["no", "No cookies or analytics"],
+          ["unsure", "Not sure"]
+        ].forEach(function (item) {
+          cookies.appendChild(node("option", { value: item[0] }, item[1]));
+        });
+
+        field("Website / business name", site);
+        field("Website URL", url);
+        field("Privacy contact email", email);
+        field("Types of data collected (edit this)", collected);
+        field("Cookies or analytics", cookies);
+
+        const output = textArea("ew107-output", "");
+        output.readOnly = true;
+        field("Generated policy draft", output);
+
+        const row = buttons();
+
+        addButton(row, "Generate Draft", function () {
+          if (!site.value.trim()) return setResult("Enter your website or business name.", true);
+
+          const name = site.value.trim();
+          const website = url.value.trim() || "[Add website URL]";
+          const contact = email.value.trim() || "[Add privacy contact email]";
+          const data = collected.value.trim() || "[Describe the data you collect]";
+
+          const cookieText = cookies.value === "yes"
+            ? "This website may use cookies or analytics technologies. Explain which services are used, their purposes, and how visitors can manage their choices."
+            : cookies.value === "no"
+              ? "This draft states that cookies and analytics are not used. Confirm this against your website, hosting, and embedded services before publishing."
+              : "Review your hosting, embedded content, analytics, and other services to determine whether cookies or similar technologies are used.";
+
+          output.value =
+            "PRIVACY POLICY — " + name + "\n\n" +
+            "Last updated: [Add date]\n\n" +
+            "1. ABOUT THIS POLICY\n" +
+            name + " (\"" + name + "\", \"we\", \"us\") operates " + website +
+            ". This draft describes how information may be handled. Customize it to match your actual practices.\n\n" +
+            "2. INFORMATION WE COLLECT\nWe may collect the following information, depending on how this website is used: " +
+            data + ". List every category of personal information actually collected and how it is obtained.\n\n" +
+            "3. HOW INFORMATION IS USED\nExplain the specific purposes for which information is used, such as providing requested features, responding to enquiries, protecting the service, or meeting legal obligations. Remove any purpose that does not apply.\n\n" +
+            "4. COOKIES AND SIMILAR TECHNOLOGIES\n" + cookieText + "\n\n" +
+            "5. SHARING AND THIRD-PARTY SERVICES\nDescribe any hosting providers, analytics tools, embedded content, or other service providers that may process information. Do not claim that information is never shared unless that is accurate.\n\n" +
+            "6. DATA RETENTION AND SECURITY\nExplain how long information is kept and the safeguards used to protect it. Avoid making guarantees that cannot be supported.\n\n" +
+            "7. YOUR CHOICES AND RIGHTS\nExplain how visitors can request access, correction, deletion, or other rights that apply to them under relevant law, and how requests are handled.\n\n" +
+            "8. CHILDREN'S PRIVACY\nDescribe whether the website is intended for children and what steps are taken if information is collected from children, as required by applicable law.\n\n" +
+            "9. CHANGES TO THIS POLICY\nUpdates should be reflected here with a revised effective date.\n\n" +
+            "10. CONTACT\nPrivacy enquiries: " + contact + "\nWebsite: " + website + "\n\n" +
+            "IMPORTANT: This is a general drafting template, not legal advice or a guarantee of compliance. Verify every statement, add any legally required disclosures, and obtain qualified advice for your jurisdiction before publishing.";
+
+          setResult("Editable privacy policy draft created. Review every section before publishing.");
+        });
+
+        addButton(row, "Copy Draft", async function () {
+          if (!output.value) return setResult("Generate the draft first.", true);
+          try {
+            await navigator.clipboard.writeText(output.value);
+            setResult("Draft copied!");
+          } catch (_) {
+            output.focus();
+            output.select();
+            setResult("Press Ctrl+C to copy.");
+          }
+        });
+
+        addButton(row, "Download Draft", function () {
+          if (!output.value) return setResult("Generate the draft first.", true);
+          downloadText("privacy-policy-draft.txt", output.value, "text/plain;charset=utf-8");
+          setResult("Draft download started.");
+        });
+      }
+    },
+    {
+      id: "meta-tag-generator-108",
+      name: "Meta Tag Generator",
+      category: "Tools",
+      icon: "🔎",
+      description: "Generate SEO and social-sharing meta tags for a webpage.",
+      keywords: "meta tag generator SEO title description canonical Open Graph Twitter HTML",
+      build: function (p, field, buttons, setResult, addCopy) {
+        const title = textInput("ew108-title", "");
+        title.placeholder = "Page title";
+
+        const description = textArea("ew108-description", "");
+        description.placeholder = "Describe the page briefly...";
+
+        const pageUrl = textInput("ew108-url", "");
+        pageUrl.placeholder = "https://example.com/page";
+
+        const imageUrl = textInput("ew108-image", "");
+        imageUrl.placeholder = "https://example.com/image.jpg";
+
+        const siteName = textInput("ew108-site", "");
+        siteName.placeholder = "Website name";
+
+        const robots = node("select", {});
+        [
+          ["index, follow", "Index and follow links"],
+          ["noindex, nofollow", "No index, no follow"],
+          ["index, nofollow", "Index, no follow"],
+          ["noindex, follow", "No index, follow"]
+        ].forEach(function (item) {
+          robots.appendChild(node("option", { value: item[0] }, item[1]));
+        });
+
+        field("Page title", title);
+        field("Meta description", description);
+        field("Canonical page URL (optional)", pageUrl);
+        field("Social preview image URL (optional)", imageUrl);
+        field("Website name (optional)", siteName);
+        field("Search engine instructions", robots);
+
+        const output = textArea("ew108-output", "");
+        output.readOnly = true;
+        field("Generated HTML tags", output);
+
+        function esc(value) {
+          return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        }
+
+        const row = buttons();
+
+        addButton(row, "Generate Tags", function () {
+          if (!title.value.trim()) return setResult("Enter a page title first.", true);
+          if (!description.value.trim()) return setResult("Enter a meta description first.", true);
+
+          const t = esc(title.value.trim());
+          const d = esc(description.value.trim());
+          const u = pageUrl.value.trim();
+          const im = imageUrl.value.trim();
+          const sn = esc(siteName.value.trim() || title.value.trim());
+
+          if (u && !/^https?:\/\/\S+$/i.test(u)) {
+            return setResult("Enter a valid canonical URL beginning with http:// or https://.", true);
+          }
+          if (im && !/^https?:\/\/\S+$/i.test(im)) {
+            return setResult("Enter a valid image URL beginning with http:// or https://.", true);
+          }
+
+          const tags = [
+            "<title>" + t + "</title>",
+            '<meta name="description" content="' + d + '">',
+            '<meta name="robots" content="' + robots.value + '">',
+            '<meta property="og:type" content="website">',
+            '<meta property="og:title" content="' + t + '">',
+            '<meta property="og:description" content="' + d + '">',
+            '<meta property="og:site_name" content="' + sn + '">',
+            '<meta name="twitter:card" content="' + (im ? "summary_large_image" : "summary") + '">',
+            '<meta name="twitter:title" content="' + t + '">',
+            '<meta name="twitter:description" content="' + d + '">'
+          ];
+
+          if (u) {
+            tags.push(
+              '<link rel="canonical" href="' + esc(u) + '">',
+              '<meta property="og:url" content="' + esc(u) + '">'
+            );
+          }
+
+          if (im) {
+            tags.push(
+              '<meta property="og:image" content="' + esc(im) + '">',
+              '<meta name="twitter:image" content="' + esc(im) + '">'
+            );
+          }
+
+          output.value = tags.join("\n");
+          setResult("Meta tags generated. Review the URLs and page details before adding them to your HTML.");
+        });
+
+        addButton(row, "Copy HTML", async function () {
+          if (!output.value) return setResult("Generate the tags first.", true);
+          try {
+            await navigator.clipboard.writeText(output.value);
+            setResult("Meta tags copied!");
+          } catch (_) {
+            output.focus();
+            output.select();
+            setResult("Press Ctrl+C to copy.");
+          }
+        });
+
+        addButton(row, "Download HTML", function () {
+          if (!output.value) return setResult("Generate the tags first.", true);
+          downloadText("emerald-world-meta-tags.html", output.value, "text/html;charset=utf-8");
+          setResult("HTML download started.");
+        });
+      }
+    }
+  ];
+
+  newTools.forEach(function (tool) {
+    if (document.querySelector('[data-ew-extra="' + tool.id + '"]')) return;
+
+    const card = node("article", {
+      className: "card",
+      "data-category": tool.category,
+      "data-keywords": (tool.name + " " + tool.keywords).toLowerCase(),
+      "data-ew-extra": tool.id
+    });
+
+    card.append(
+      node("div", {className:"card-icon"}, tool.icon),
+      node("h3", {}, tool.name),
+      node("p", {className:"card-description"}, tool.description),
+      node("span", {className:"tag"}, tool.category)
+    );
+
+    const openButton = node("button", {type:"button", className:"btn primary"}, "Open Tool →");
+    card.appendChild(openButton);
+
+    const panel = node("section", {
+      id: "ew104-panel-" + tool.id,
+      className: "tool-panel ew75-panel",
+      "aria-label": tool.name
+    });
+
+    const closeRow = node("div", {className:"ew75-content"});
+    const closeButton = node("button", {type:"button", className:"btn"}, "✕ Close Tool");
+    closeButton.addEventListener("click", function () {
+      panel.style.display = "none";
+    });
+    closeRow.appendChild(closeButton);
+    panel.appendChild(closeRow);
+
+    const p = node("div", {className:"ew75-content"});
+    panel.appendChild(p);
+    document.body.appendChild(panel);
+
+    function field(label, control) {
+      makeField(p, label, control);
+      return control;
+    }
+
+    function buttons() {
+      return actionRow(p);
+    }
+
+    function setResult(message, error) {
+      showResult(p, message, error);
+    }
+
+    function addCopy(row, output, label) {
+      addButton(row, label || "Copy Output", async function () {
+        const value = typeof output === "string" ? output : output.value;
+        if (!value) return setResult("There is no output to copy.", true);
+        try {
+          await navigator.clipboard.writeText(value);
+          setResult("Copied to clipboard!");
+        } catch (_) {
+          if (output && typeof output !== "string") {
+            output.focus();
+            output.select();
+          }
+          setResult("Press Ctrl+C to copy.");
+        }
+      });
+    }
+
+    tool.build(p, field, buttons, setResult, addCopy);
+
+    openButton.addEventListener("click", function (event) {
+      event.stopPropagation();
+      document.querySelectorAll(".ew75-panel").forEach(function (item) {
+        item.style.display = "none";
+      });
+      panel.style.display = "block";
+      panel.scrollIntoView({behavior:"smooth", block:"start"});
+    });
+
+    grid.appendChild(card);
+  });
+}
+  
   const guard = node("span", {id:"ew5-tools-71-75-loaded"});
   guard.hidden = true;
   document.body.appendChild(guard);
