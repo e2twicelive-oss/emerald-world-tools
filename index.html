@@ -2305,5 +2305,65 @@ drawPomo();
 })();
 </script>
 
+<script>
+(function () {
+  const grid = document.getElementById("grid");
+  if (!grid || document.getElementById("ew8-card-fix")) return;
+
+  const tools = [
+    ["36","html","🖥️","Developer","HTML Previewer","Write HTML and preview your webpage safely.","html preview webpage developer code"],
+    ["37","reverse","🔄","Text","Text Reverser","Reverse characters, words, or lines in seconds.","reverse text words characters"],
+    ["38","chars","🔡","Text","Character Frequency Counter","Count how often each character appears in your text.","character frequency count letters"],
+    ["39","time","⏱️","Calculators","Time Calculator","Add or subtract hours, minutes, and seconds.","time calculator hours minutes seconds"],
+    ["40","roman","🏛️","Calculators","Roman Numeral Converter","Convert numbers to Roman numerals and back.","roman numeral converter numbers"],
+    ["41","words","📊","Text","Word Frequency Counter","Discover your most frequently used words.","word frequency count text"],
+    ["42","slug","🔗","Developer","Slug Generator","Create clean, URL-friendly slugs from titles.","slug url generator seo"],
+    ["43","ascii","🎨","Generators","ASCII Art Text Generator","Turn letters and numbers into creative block art.","ascii art text generator"],
+    ["44","numberwords","🔢","Calculators","Number to Words Converter","Convert whole numbers into written English.","number to words converter"],
+    ["45","reading","📚","Text","Reading Time Calculator","Estimate reading time and speaking time for text.","reading time article words"]
+  ];
+
+  const marker = document.createElement("span");
+  marker.id = "ew8-card-fix";
+  marker.hidden = true;
+  grid.appendChild(marker);
+
+  tools.forEach(([num,id,emoji,category,name,desc,keywords]) => {
+    const panel = document.getElementById("ew8-panel-" + id);
+    if (!panel) return;
+
+    const card = document.createElement("article");
+    card.className = "card ew8-original-card";
+    card.dataset.category = category;
+    card.dataset.keywords = keywords;
+    card.innerHTML = `
+      <div class="card-icon">${emoji}</div>
+      <span class="tag">${category}</span>
+      <h3>${name}</h3>
+      <p>${desc}</p>
+      <button class="btn primary" type="button">Open Tool →</button>
+    `;
+
+    card.querySelector("button").addEventListener("click", () => {
+      document.querySelectorAll("#ew8-panels .ew8-panel").forEach(p => p.hidden = true);
+      panel.hidden = false;
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    grid.insertBefore(card, marker);
+  });
+
+  // Remove the old plain-box card grid.
+  const oldGrid = document.getElementById("ew8-tools");
+  if (oldGrid) oldGrid.remove();
+
+  marker.remove();
+
+  // Apply existing category and search filters to the new cards.
+  const search = document.getElementById("search");
+  if (search) search.dispatchEvent(new Event("input", { bubbles: true }));
+})();
+</script>
+
 </html>
 
