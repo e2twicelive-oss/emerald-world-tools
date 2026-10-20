@@ -4867,6 +4867,484 @@ const $ = (s,p=document) => p.querySelector(s);
     });
   }
 
+  // Emerald World Tools 84–88
+  {
+    const newTools = [
+      {
+        id: "qr-reader-84",
+        name: "QR Code Reader",
+        category: "Developer",
+        icon: "📷",
+        keywords: "qr code scan reader image decode",
+        description: "Read QR codes from images in supported browsers."
+      },
+      {
+        id: "html-escape-85",
+        name: "HTML Escape & Unescape",
+        category: "Developer",
+        icon: "</>",
+        keywords: "html escape unescape entities encode decode",
+        description: "Convert special HTML characters to and from entities."
+      },
+      {
+        id: "json-validator-86",
+        name: "JSON Validator",
+        category: "Developer",
+        icon: "🧾",
+        keywords: "json validate syntax errors developer",
+        description: "Check JSON syntax and see whether your data is valid."
+      },
+      {
+        id: "word-cloud-87",
+        name: "Word Cloud Generator",
+        category: "Generators",
+        icon: "☁️",
+        keywords: "word cloud visual text frequency words",
+        description: "Create a visual word cloud from your text."
+      },
+      {
+        id: "xml-validator-88",
+        name: "XML Validator",
+        category: "Developer",
+        icon: "🔍",
+        keywords: "xml validate syntax markup developer",
+        description: "Check XML syntax and find parsing errors."
+      }
+    ];
+
+    newTools.forEach(function (tool) {
+      if (document.querySelector('[data-ew-extra="' + tool.id + '"]')) return;
+
+      const card = node("article", {
+        className: "card",
+        "data-category": tool.category,
+        "data-keywords": (tool.name + " " + tool.keywords).toLowerCase(),
+        "data-ew-extra": tool.id
+      });
+
+      card.append(
+        node("div", {className:"card-icon"}, tool.icon),
+        node("span", {className:"tag"}, tool.category),
+        node("h3", {}, tool.name),
+        node("p", {className:"card-description"}, tool.description)
+      );
+
+      const openButton = node("button", {
+        type: "button",
+        className: "btn primary"
+      }, "Open Tool →");
+      card.appendChild(openButton);
+
+      const panel = node("section", {
+        id: "ew88-panel-" + tool.id,
+        className: "tool-panel ew75-panel",
+        "aria-label": tool.name
+      });
+
+      const close = node("button", {
+        type: "button",
+        className: "btn ew75-close"
+      }, "✕ Close");
+
+      close.addEventListener("click", function () {
+        panel.style.display = "none";
+      });
+
+      panel.append(
+        close,
+        node("h2", {}, tool.icon + " " + tool.name),
+        node("p", {className:"ew75-description"}, tool.description)
+      );
+
+      const p = node("div", {className:"ew75-content"});
+      panel.appendChild(p);
+      document.body.appendChild(panel);
+
+      openButton.addEventListener("click", function (event) {
+        event.stopPropagation();
+        document.querySelectorAll(".ew75-panel").forEach(function (item) {
+          item.style.display = "none";
+        });
+        panel.style.display = "block";
+        panel.scrollIntoView({behavior:"smooth", block:"start"});
+      });
+
+      grid.appendChild(card);
+
+      function field(label, control) {
+        makeField(p, label, control);
+        return control;
+      }
+
+      function buttons() {
+        return actionRow(p);
+      }
+
+      function setResult(message, error) {
+        showResult(p, message, error);
+      }
+
+      function addCopy(output, label) {
+        const row = buttons();
+        addButton(row, "Copy Result", async function () {
+          if (!output.value) {
+            setResult("Create a result first.", true);
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(output.value);
+            setResult(label + " copied!");
+          } catch (_) {
+            output.focus();
+            output.select();
+            setResult("Press Ctrl+C to copy the selected result.");
+          }
+        });
+      }
+
+      // 84. QR Code Reader
+      if (tool.id === "qr-reader-84") {
+        const upload = field("Choose an image containing a QR code",
+          node("input", {type:"file", accept:"image/*", id:"ew84-qr-file"}));
+
+        const output = field("QR code contents",
+          textArea("ew84-qr-output", ""));
+        output.readOnly = true;
+        output.rows = 5;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+
+        addButton(row, "Read QR Code", async function () {
+          const file = upload.files && upload.files[0];
+
+          if (!file) {
+            setResult("Please choose an image first.", true);
+            return;
+          }
+
+          if (!file.type.startsWith("image/")) {
+            setResult("Please choose a valid image file.", true);
+            return;
+          }
+
+          if (!("BarcodeDetector" in window)) {
+            setResult(
+              "QR scanning is not supported by this browser. Try an updated Chrome browser that supports BarcodeDetector.",
+              true
+            );
+            return;
+          }
+
+          let bitmap;
+          try {
+            const detector = new BarcodeDetector({formats:["qr_code"]});
+            bitmap = await createImageBitmap(file);
+            const codes = await detector.detect(bitmap);
+
+            if (!codes.length) {
+              output.value = "";
+              setResult("No readable QR code was found in that image.", true);
+              return;
+            }
+
+            output.value = codes.map(function (code, index) {
+              return "QR Code " + (index + 1) + ":\n" + code.rawValue;
+            }).join("\n\n");
+
+            setResult("Successfully read " + codes.length + " QR code(s).");
+          } catch (error) {
+            setResult(
+              "Could not scan this image. Try a clearer image or another supported browser.",
+              true
+            );
+          } finally {
+            if (bitmap) bitmap.close();
+          }
+        }, true);
+
+        addButton(row, "Clear", function () {
+          upload.value = "";
+          output.value = "";
+          setResult("Choose an image to get started.");
+        });
+
+        addCopy(output, "QR contents");
+        setResult(
+          "Choose an image containing a QR code, then select Read QR Code. Scanning happens in your browser when supported."
+        );
+      }
+
+      // 85. HTML Escape & Unescape
+      if (tool.id === "html-escape-85") {
+        const input = field("Enter text or HTML",
+          textArea("ew85-html-input", ""));
+        input.rows = 7;
+        input.placeholder = 'Example: <h1>Hello & "welcome"</h1>';
+
+        const output = field("Result",
+          textArea("ew85-html-output", ""));
+        output.rows = 7;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+
+        addButton(row, "Escape HTML", function () {
+          output.value = input.value.replace(/[&<>"']/g, function (char) {
+            return {
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;"
+            }[char];
+          });
+          setResult("HTML characters escaped successfully.");
+        }, true);
+
+        addButton(row, "Unescape HTML", function () {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(input.value, "text/html");
+          output.value = doc.documentElement.textContent || "";
+          setResult("HTML entities decoded into text.");
+        });
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Enter text to escape or unescape.");
+        });
+
+        addCopy(output, "HTML result");
+        setResult("Escape special characters or decode HTML entities.");
+      }
+
+      // 86. JSON Validator
+      if (tool.id === "json-validator-86") {
+        const input = field("Paste JSON",
+          textArea("ew86-json-input", ""));
+        input.rows = 9;
+        input.placeholder = '{\n  "name": "Emerald World",\n  "free": true\n}';
+
+        const output = field("Validation details",
+          textArea("ew86-json-output", ""));
+        output.rows = 5;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+
+        addButton(row, "Validate JSON", function () {
+          if (!input.value.trim()) {
+            output.value = "";
+            setResult("Please enter JSON to validate.", true);
+            return;
+          }
+
+          try {
+            const data = JSON.parse(input.value);
+            const type = data === null ? "null" :
+              Array.isArray(data) ? "array" : typeof data;
+
+            output.value =
+              "Valid JSON ✓\nTop-level type: " + type +
+              (Array.isArray(data) ? "\nItems: " + data.length :
+              type === "object" && data !== null
+                ? "\nProperties: " + Object.keys(data).length
+                : "");
+            setResult("Your JSON syntax is valid!");
+          } catch (error) {
+            output.value = "Invalid JSON\n" + error.message;
+            setResult("JSON validation failed. Check the error details.", true);
+          }
+        }, true);
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Paste JSON to validate it.");
+        });
+
+        addCopy(output, "Validation details");
+        setResult("This tool checks JSON syntax locally in your browser.");
+      }
+
+      // 87. Word Cloud Generator
+      if (tool.id === "word-cloud-87") {
+        const input = field("Enter your text",
+          textArea("ew87-cloud-input", ""));
+        input.rows = 8;
+        input.placeholder = "Paste an article, story, or any text here...";
+
+        const minLength = field("Ignore words shorter than",
+          textInput("ew87-cloud-min", "3", "number"));
+        minLength.min = "1";
+        minLength.max = "20";
+        minLength.step = "1";
+
+        const preview = node("div", {
+          id: "ew87-cloud-preview"
+        });
+        preview.style.cssText =
+          "display:flex;flex-wrap:wrap;align-items:center;justify-content:center;" +
+          "gap:10px;padding:18px;min-height:130px;margin-top:12px;" +
+          "background:#09150f;border:1px solid #254333;border-radius:12px;";
+
+        makeField(p, "Word cloud preview", preview);
+
+        const output = field("Word frequencies",
+          textArea("ew87-cloud-output", ""));
+        output.rows = 7;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+
+        addButton(row, "Generate Word Cloud", function () {
+          const text = input.value.toLowerCase();
+          const min = Number(minLength.value);
+
+          if (!text.trim()) {
+            setResult("Please enter some text first.", true);
+            return;
+          }
+
+          if (!Number.isInteger(min) || min < 1 || min > 20) {
+            setResult("Choose a minimum word length from 1 to 20.", true);
+            return;
+          }
+
+          const words = text.match(/[\p{L}\p{N}]+/gu) || [];
+          const counts = new Map();
+
+          words.forEach(function (word) {
+            if (word.length >= min) {
+              counts.set(word, (counts.get(word) || 0) + 1);
+            }
+          });
+
+          const sorted = Array.from(counts.entries())
+            .sort(function (a, b) {
+              return b[1] - a[1] || a[0].localeCompare(b[0]);
+            })
+            .slice(0, 60);
+
+          if (!sorted.length) {
+            preview.replaceChildren();
+            output.value = "";
+            setResult("No words matched that minimum length.", true);
+            return;
+          }
+
+          preview.replaceChildren();
+
+          const max = sorted[0][1];
+          const minCount = sorted[sorted.length - 1][1];
+
+          sorted.forEach(function (entry, index) {
+            const word = entry[0];
+            const count = entry[1];
+            const span = node("span", {}, word);
+            const size = max === minCount
+              ? 18
+              : 14 + ((count - minCount) / (max - minCount)) * 24;
+
+            span.style.cssText =
+              "font-size:" + size + "px;font-weight:" +
+              (count === max ? "800" : "600") +
+              ";color:" + (index % 2 ? "#a0b9aa" : "#39e58c") +
+              ";padding:3px 5px;overflow-wrap:anywhere;";
+            span.title = count + " occurrence(s)";
+            preview.appendChild(span);
+          });
+
+          output.value = sorted.map(function (entry) {
+            return entry[0] + ": " + entry[1];
+          }).join("\n");
+
+          setResult(
+            "Created a word cloud with " + sorted.length +
+            " unique words. Showing the 60 most frequent at most."
+          );
+        }, true);
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          minLength.value = "3";
+          output.value = "";
+          preview.replaceChildren();
+          setResult("Enter text to generate a word cloud.");
+        });
+
+        addCopy(output, "Word frequencies");
+        setResult("Larger words appear more often in your text.");
+      }
+
+      // 88. XML Validator
+      if (tool.id === "xml-validator-88") {
+        const input = field("Paste XML",
+          textArea("ew88-xml-input", ""));
+        input.rows = 9;
+        input.placeholder = '<root>\n  <item>Hello</item>\n</root>';
+
+        const output = field("Validation details",
+          textArea("ew88-xml-output", ""));
+        output.rows = 5;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+
+        addButton(row, "Validate XML", function () {
+          if (!input.value.trim()) {
+            output.value = "";
+            setResult("Please enter XML to validate.", true);
+            return;
+          }
+
+          try {
+            const doc = new DOMParser().parseFromString(
+              input.value, "application/xml"
+            );
+            const errors = doc.getElementsByTagName("parsererror");
+
+            if (errors.length) {
+              output.value = "Invalid XML\n" +
+                (errors[0].textContent || "Parsing error").trim();
+              setResult("XML validation failed. Check the parsing details.", true);
+              return;
+            }
+
+            const root = doc.documentElement;
+            if (!root) {
+              output.value = "Invalid XML: missing root element.";
+              setResult("XML must contain a root element.", true);
+              return;
+            }
+
+            output.value =
+              "Well-formed XML ✓\nRoot element: " + root.nodeName +
+              "\nThis checks XML syntax, not an XSD schema.";
+            setResult("Your XML is well-formed!");
+          } catch (error) {
+            output.value = "Could not parse XML.\n" + error.message;
+            setResult("Unable to validate this XML.", true);
+          }
+        }, true);
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Paste XML to validate it.");
+        });
+
+        addCopy(output, "Validation details");
+        setResult("Checks whether the XML is well-formed. No schema check is performed.");
+      }
+    });
+  }
+
   const guard = node("span", {id:"ew5-tools-71-75-loaded"});
   guard.hidden = true;
   document.body.appendChild(guard);
