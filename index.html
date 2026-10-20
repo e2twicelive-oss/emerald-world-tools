@@ -3394,6 +3394,7 @@ const $ = (s,p=document) => p.querySelector(s);
 
     card.appendChild(el("div", { className: "card-icon" }, tool.icon));
     card.appendChild(el("h3", {}, tool.name));
+    card.appendChild(el("p", { className: "card-description" }, tool.description));
     card.appendChild(el("span", { className: "tag" }, tool.category));
 
     const openBtn = el("button", {
