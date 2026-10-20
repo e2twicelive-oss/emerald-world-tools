@@ -2365,5 +2365,366 @@ drawPomo();
 })();
 </script>
 
+<script>
+(function () {
+  if (document.getElementById("ew9-tools-loaded")) return;
+  const grid = document.getElementById("grid");
+  if (!grid) { console.error("Emerald World: #grid not found."); return; }
+
+  const tools = [
+    {n:46,id:"encrypt",icon:"🔐",cat:"Developer",name:"Text Encryption & Decryption",desc:"Encrypt private text with a password or decrypt it later.",keywords:"text encryption decryption password AES security"},
+    {n:47,id:"duplicates",icon:"🧹",cat:"Text",name:"Duplicate Line Remover",desc:"Remove repeated lines from text while preserving order.",keywords:"duplicate remove repeated lines clean text"},
+    {n:48,id:"lines",icon:"📏",cat:"Text",name:"Line Counter",desc:"Count total lines, non-empty lines and characters.",keywords:"line counter count text characters paragraphs"},
+    {n:49,id:"sort",icon:"🔤",cat:"Text",name:"Alphabetical Text Sorter",desc:"Sort lines A–Z or Z–A and remove duplicates if needed.",keywords:"alphabetical sorter sort lines text"},
+    {n:50,id:"choice",icon:"🎲",cat:"Generators",name:"Random Choice Picker",desc:"Pick a random winner from your list of choices.",keywords:"random choice picker winner list names"},
+    {n:51,id:"dates",icon:"📅",cat:"Calculators",name:"Date Difference Calculator",desc:"Calculate days between two dates, including weeks.",keywords:"date difference days weeks calendar calculator"},
+    {n:52,id:"timezone",icon:"🌍",cat:"Calculators",name:"Time Zone Converter",desc:"Convert a date and time between supported time zones.",keywords:"time zone converter world clock date time"},
+    {n:53,id:"contrast",icon:"🎨",cat:"Developer",name:"Color Contrast Checker",desc:"Check text contrast and WCAG accessibility ratios.",keywords:"color contrast accessibility WCAG colors"},
+    {n:54,id:"image64",icon:"🖼️",cat:"Converters",name:"Image to Base64 Converter",desc:"Convert an image file into a Base64 data URL.",keywords:"image base64 converter encode data URL"},
+    {n:55,id:"pdf",icon:"📄",cat:"Converters",name:"Text to PDF",desc:"Prepare a clean document and save it as a PDF using Print.",keywords:"text to PDF document print save"}
+  ];
+
+  const marker = document.createElement("span");
+  marker.id = "ew9-tools-loaded";
+  marker.hidden = true;
+  grid.appendChild(marker);
+
+  const panels = document.createDocumentFragment();
+
+  tools.forEach(t => {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.dataset.category = t.cat;
+    card.dataset.keywords = t.keywords;
+    card.innerHTML = `
+      <div class="card-icon">${t.icon}</div>
+      <span class="tag">${t.cat}</span>
+      <h3>${t.name}</h3>
+      <p>${t.desc}</p>
+      <button class="btn primary" type="button">Open Tool →</button>
+    `;
+    card.querySelector("button").addEventListener("click", () => {
+      document.querySelectorAll(".ew9-panel").forEach(p => p.style.display = "none");
+      const panel = document.getElementById("ew9-panel-" + t.id);
+      panel.style.display = "block";
+      panel.scrollIntoView({behavior:"smooth",block:"start"});
+    });
+    grid.insertBefore(card, marker);
+
+    const panel = document.createElement("section");
+    panel.className = "tool-panel ew9-panel";
+    panel.id = "ew9-panel-" + t.id;
+    panel.style.display = "none";
+    panel.innerHTML = `<h2>${t.icon} ${t.name}</h2><p>${t.desc}</p><div class="tool-content"></div>`;
+    panels.appendChild(panel);
+  });
+  marker.remove();
+
+  const about = document.getElementById("about");
+  if (about && about.parentNode) about.parentNode.insertBefore(panels, about);
+  else document.body.appendChild(panels);
+
+  const $ = (p,s) => p.querySelector(s);
+  const field = (p,label,tag,attrs={}) => {
+    const l = document.createElement("label");
+    l.textContent = label;
+    const e = document.createElement(tag);
+    Object.entries(attrs).forEach(([k,v]) => {
+      if (k === "text") e.textContent = v;
+      else e.setAttribute(k,v);
+    });
+    l.appendChild(e);
+    p.appendChild(l);
+    return e;
+  };
+  const button = (p,label,fn) => {
+    const b = document.createElement("button");
+    b.className = "btn primary";
+    b.type = "button";
+    b.textContent = label;
+    b.addEventListener("click",fn);
+    p.appendChild(b);
+    return b;
+  };
+  const result = (p,text="Your result will appear here.") => {
+    let r = $(".result",p);
+    if (!r) { r = document.createElement("div"); r.className="result"; p.appendChild(r); }
+    r.textContent = text;
+    return r;
+  };
+  const copy = async text => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert("Copied!");
+    } catch {
+      alert("Clipboard unavailable. Select the result and copy it manually.");
+    }
+  };
+  const panel = id => $("#ew9-panel-"+id+" .tool-content",document);
+
+  /* 46 — Password-based AES-GCM encryption */
+  {
+    const p=panel("encrypt");
+    p.innerHTML = `
+      <label>Text to encrypt or decrypt</label>
+      <textarea class="field" id="ew9-enc-text" placeholder="Enter your text or encrypted data..."></textarea>
+      <label>Password</label>
+      <input class="field" id="ew9-enc-pass" type="password" autocomplete="new-password" placeholder="Choose a strong password">
+      <div class="actions"><button class="btn primary" id="ew9-enc-go">Encrypt Text</button><button class="btn" id="ew9-dec-go">Decrypt Text</button></div>
+      <div class="result" id="ew9-enc-result">Your result will appear here.</div>
+      <button class="btn" id="ew9-enc-copy">Copy Result</button>
+      <p class="muted">Uses AES-GCM with a password-derived key. Save your password separately: encrypted text cannot be recovered without it. Requires browser Web Crypto support.</p>`;
+    let output="";
+    async function derive(pass,salt){
+      const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]);
+      return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+    }
+    const enc= new TextEncoder();
+    const dec= new TextDecoder();
+    $("#ew9-enc-go",p).addEventListener("click",async()=>{
+      const text=$("#ew9-enc-text",p).value, pass=$("#ew9-enc-pass",p).value;
+      if(!text || !pass){$("#ew9-enc-result",p).textContent="Enter text and a password.";return;}
+      if(!window.crypto?.subtle){$("#ew9-enc-result",p).textContent="Web Crypto is unavailable. Open the site using HTTPS in a supported browser.";return;}
+      try{
+        const salt=crypto.getRandomValues(new Uint8Array(16));
+        const iv=crypto.getRandomValues(new Uint8Array(12));
+        const key=await derive(pass,salt);
+        const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,enc.encode(text));
+        const bytes=new Uint8Array(salt.length+iv.length+ciphertext.byteLength);
+        bytes.set(salt,0);bytes.set(iv,16);bytes.set(new Uint8Array(ciphertext),28);
+        output="EW1:"+btoa(Array.from(bytes,b=>String.fromCharCode(b)).join(""));
+        $("#ew9-enc-result",p).textContent=output;
+      }catch(e){$("#ew9-enc-result",p).textContent="Encryption failed: "+e.message;}
+    });
+    $("#ew9-dec-go",p).addEventListener("click",async()=>{
+      const text=$("#ew9-enc-text",p).value.trim(),pass=$("#ew9-enc-pass",p).value;
+      if(!text||!pass){$("#ew9-enc-result",p).textContent="Enter encrypted data and its password.";return;}
+      try{
+        if(!text.startsWith("EW1:"))throw Error("Unrecognized format. Use data created by this tool.");
+        const bytes=Uint8Array.from(atob(text.slice(4)),c=>c.charCodeAt(0));
+        if(bytes.length<45)throw Error("Encrypted data is incomplete.");
+        const key=await derive(pass,bytes.slice(0,16));
+        const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:bytes.slice(16,28)},key,bytes.slice(28));
+        output=dec.decode(plain);
+        $("#ew9-enc-result",p).textContent=output;
+      }catch(e){$("#ew9-enc-result",p).textContent="Decryption failed. Check your password and encrypted text.";}
+    });
+    $("#ew9-enc-copy",p).addEventListener("click",()=>copy($("#ew9-enc-result",p).textContent));
+  }
+
+  /* 47 — Duplicate Line Remover */
+  {
+    const p=panel("duplicates");
+    const input=field(p,"Enter text","textarea",{class:"field",placeholder:"One item per line..."});
+    const mode=field(p,"Duplicate matching","select");
+    mode.innerHTML='<option value="exact">Exact match</option><option value="trim">Ignore surrounding spaces</option><option value="ci">Ignore case and surrounding spaces</option>';
+    const output=result(p);
+    button(p,"Remove Duplicates",()=>{
+      const seen=new Set(), lines=input.value.split(/\r?\n/), out=[];
+      lines.forEach(line=>{
+        const key=mode.value==="ci"?line.trim().toLocaleLowerCase():mode.value==="trim"?line.trim():line;
+        if(!seen.has(key)){seen.add(key);out.push(line);}
+      });
+      output.textContent=out.join("\n")+"\n\nOriginal lines: "+lines.length+" · Unique lines: "+out.length+" · Removed: "+(lines.length-out.length);
+    });
+    button(p,"Copy Result",()=>copy(output.textContent.split("\n\nOriginal lines:")[0]));
+  }
+
+  /* 48 — Line Counter */
+  {
+    const p=panel("lines");
+    const input=field(p,"Your text","textarea",{class:"field",placeholder:"Type or paste text..."});
+    const output=result(p,"Enter text to count lines.");
+    input.addEventListener("input",()=>{
+      const s=input.value;
+      const lines=s.length?s.split(/\r\n|\r|\n/):[];
+      output.textContent="Total lines: "+lines.length+
+        "\nNon-empty lines: "+lines.filter(x=>x.trim()).length+
+        "\nEmpty lines: "+lines.filter(x=>!x.trim()).length+
+        "\nCharacters: "+s.length+
+        "\nCharacters excluding whitespace: "+s.replace(/\s/g,"").length+
+        "\nWords: "+(s.trim()?s.trim().split(/\s+/).length:0);
+    });
+  }
+
+  /* 49 — Alphabetical Text Sorter */
+  {
+    const p=panel("sort");
+    const input=field(p,"Lines to sort","textarea",{class:"field",placeholder:"Enter one item per line..."});
+    const order=field(p,"Sort order","select");
+    order.innerHTML='<option value="asc">A → Z</option><option value="desc">Z → A</option>';
+    const unique=field(p,"Options","input",{type:"checkbox"});
+    unique.style.width="auto";
+    const label=unique.parentElement;
+    label.appendChild(document.createTextNode(" Remove duplicate lines"));
+    const output=result(p);
+    button(p,"Sort Lines",()=>{
+      let lines=input.value.split(/\r?\n/);
+      if(unique.checked){
+        const seen=new Set();
+        lines=lines.filter(x=>{
+          const k=x.toLocaleLowerCase();
+          if(seen.has(k))return false;
+          seen.add(k);return true;
+        });
+      }
+      lines.sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:"base"}));
+      if(order.value==="desc")lines.reverse();
+      output.textContent=lines.join("\n");
+    });
+    button(p,"Copy Result",()=>copy(output.textContent));
+  }
+
+  /* 50 — Random Choice Picker */
+  {
+    const p=panel("choice");
+    const input=field(p,"Your choices (one per line)","textarea",{class:"field",placeholder:"Pizza\nBurger\nPasta"});
+    const output=result(p,"Add at least two choices.");
+    button(p,"Pick Random Choice",()=>{
+      const choices=input.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      if(!choices.length){output.textContent="Enter at least one choice.";return;}
+      const random=new Uint32Array(1);
+      crypto.getRandomValues(random);
+      const winner=choices[Math.floor(random[0]/4294967296*choices.length)];
+      output.textContent="🎉 Winner: "+winner+"\nChoices entered: "+choices.length;
+    });
+  }
+
+  /* 51 — Date Difference Calculator */
+  {
+    const p=panel("dates");
+    const a=field(p,"Start date","input",{type:"date",class:"field"});
+    const b=field(p,"End date","input",{type:"date",class:"field"});
+    const output=result(p);
+    button(p,"Calculate Difference",()=>{
+      if(!a.value||!b.value){output.textContent="Choose both dates.";return;}
+      const parse=s=>{const [y,m,d]=s.split("-").map(Number);return Date.UTC(y,m-1,d);};
+      const days=Math.round((parse(b.value)-parse(a.value))/86400000);
+      output.textContent="Difference: "+Math.abs(days)+" days"+
+        "\nWeeks: "+(Math.abs(days)/7).toFixed(2)+
+        "\nDirection: "+(days===0?"Same date":days>0?"End date is later":"End date is earlier")+
+        "\nInclusive calendar days: "+(Math.abs(days)+1);
+    });
+  }
+
+  /* 52 — Time Zone Converter */
+  {
+    const p=panel("timezone");
+    const dt=field(p,"Date and time at source location","input",{type:"datetime-local",class:"field"});
+    const from=field(p,"Source time zone (IANA name)","input",{class:"field",value:"Asia/Kolkata",placeholder:"Asia/Kolkata"});
+    const to=field(p,"Target time zone (IANA name)","input",{class:"field",value:"America/New_York",placeholder:"America/New_York"});
+    const output=result(p,"Choose a date and enter two valid time zones.");
+    const parts=(date,tz)=>{
+      const values=new Intl.DateTimeFormat("en-CA",{timeZone:tz,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(date);
+      const obj={};values.forEach(x=>{if(x.type!=="literal")obj[x.type]=Number(x.value);});
+      return obj;
+    };
+    button(p,"Convert Time",()=>{
+      try{
+        if(!dt.value)throw Error("Choose a date and time.");
+        const [d,t]=dt.value.split("T"),[y,m,day]=d.split("-").map(Number),[h,min]=t.split(":").map(Number);
+        const desired=Date.UTC(y,m-1,day,h,min,0);
+        const tz=from.value.trim(), target=to.value.trim();
+        // Validate names and iteratively resolve source wall-clock time.
+        new Intl.DateTimeFormat("en",{timeZone:tz}).format();
+        new Intl.DateTimeFormat("en",{timeZone:target}).format();
+        let instant=desired;
+        for(let i=0;i<4;i++){
+          const q=parts(new Date(instant),tz);
+          const represented=Date.UTC(q.year,q.month-1,q.day,q.hour,q.minute,q.second);
+          instant+=desired-represented;
+        }
+        const converted=new Date(instant);
+        const sourceCheck=parts(converted,tz);
+        if(sourceCheck.year!==y||sourceCheck.month!==m||sourceCheck.day!==day||sourceCheck.hour!==h||sourceCheck.minute!==min)
+          throw Error("This local time may not exist because of a daylight-saving clock change.");
+        output.textContent="Converted time: "+new Intl.DateTimeFormat("en-GB",{timeZone:target,dateStyle:"full",timeStyle:"long"}).format(converted)+
+          "\nSource: "+tz+"\nTarget: "+target+
+          "\n\nUse IANA names such as Asia/Kolkata, Europe/London or America/New_York.";
+      }catch(e){output.textContent="Could not convert: "+e.message;}
+    });
+  }
+
+  /* 53 — WCAG Color Contrast Checker */
+  {
+    const p=panel("contrast");
+    const fg=field(p,"Text color","input",{type:"color",class:"field",value:"#ffffff"});
+    const bg=field(p,"Background color","input",{type:"color",class:"field",value:"#07110d"});
+    const preview=document.createElement("div");
+    preview.style.cssText="padding:24px;border-radius:12px;margin:12px 0;font-size:20px;font-weight:bold;";
+    preview.textContent="Emerald World — Sample Text";
+    p.appendChild(preview);
+    const output=result(p);
+    function lum(hex){
+      const vals=hex.match(/[a-f\d]{2}/gi).map(x=>parseInt(x,16)/255).map(v=>v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4));
+      return .2126*vals[0]+.7152*vals[1]+.0722*vals[2];
+    }
+    function update(){
+      preview.style.color=fg.value;preview.style.background=bg.value;
+      const l1=lum(fg.value),l2=lum(bg.value),ratio=(Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);
+      output.textContent="Contrast ratio: "+ratio.toFixed(2)+":1"+
+        "\nNormal text (4.5:1): "+(ratio>=4.5?"PASS":"FAIL")+
+        "\nLarge text (3:1): "+(ratio>=3?"PASS":"FAIL")+
+        "\nEnhanced normal text (7:1): "+(ratio>=7?"PASS":"FAIL");
+    }
+    fg.addEventListener("input",update);bg.addEventListener("input",update);update();
+  }
+
+  /* 54 — Image to Base64 Converter */
+  {
+    const p=panel("image64");
+    const file=field(p,"Choose an image","input",{type:"file",accept:"image/*",class:"field"});
+    const output=result(p,"Choose an image to convert.");
+    button(p,"Convert Image",()=>{
+      const f=file.files&&file.files[0];
+      if(!f){output.textContent="Choose an image first.";return;}
+      if(!f.type.startsWith("image/")){output.textContent="Please select an image file.";return;}
+      if(f.size>8*1024*1024){output.textContent="Please choose an image under 8 MB for this browser tool.";return;}
+      const reader=new FileReader();
+      reader.onload=()=>{
+        output.textContent=String(reader.result);
+      };
+      reader.onerror=()=>{output.textContent="Could not read this file.";};
+      reader.readAsDataURL(f);
+    });
+    button(p,"Copy Data URL",()=>copy(output.textContent));
+    const note=document.createElement("p");
+    note.className="muted";
+    note.textContent="The full Base64 result can be very long. This tool processes the file in your browser.";
+    p.appendChild(note);
+  }
+
+  /* 55 — Text to PDF via browser print */
+  {
+    const p=panel("pdf");
+    const title=field(p,"Document title","input",{type:"text",class:"field",value:"My Document"});
+    const input=field(p,"Document text","textarea",{class:"field",placeholder:"Write or paste your document here..."});
+    const output=result(p,"Your document is ready to prepare.");
+    button(p,"Prepare PDF / Print",()=>{
+      if(!input.value.trim()){output.textContent="Enter some text first.";return;}
+      const w=window.open("","_blank");
+      if(!w){output.textContent="Your browser blocked the new window. Allow pop-ups for this site and try again.";return;}
+      const escape=s=>s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+      w.document.open();
+      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escape(title.value||"Document")}</title><style>
+        body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 24px;color:#222;line-height:1.7}
+        h1{font-size:24px;border-bottom:1px solid #ccc;padding-bottom:12px}
+        pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
+        @media print{body{margin:0;padding:0}h1{page-break-after:avoid}}
+        </style></head><body><h1>${escape(title.value||"Document")}</h1><pre>${escape(input.value)}</pre>
+        <button onclick="window.print()">Print / Save as PDF</button></body></html>`);
+      w.document.close();
+      output.textContent="Document prepared in a new tab. Choose Print / Save as PDF, then select Save as PDF in your print dialog.";
+    });
+  }
+
+  // Refresh the existing search/filter system if it is present.
+  const search=document.getElementById("search");
+  if(search) search.dispatchEvent(new Event("input",{bubbles:true}));
+
+  console.log("Emerald World Tools batch 46–55 loaded.");
+})();
+</script>
+
 </html>
 
