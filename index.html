@@ -4549,6 +4549,324 @@ const $ = (s,p=document) => p.querySelector(s);
   }
 
 
+  // Emerald World Tools 76–80
+  {
+    const newTools = [
+      {
+        id: "text-slug-76",
+        name: "Text to Slug Converter",
+        category: "Text",
+        icon: "🔗",
+        keywords: "slug url title seo text",
+        description: "Convert titles into clean, URL-friendly slugs."
+      },
+      {
+        id: "text-sort-dedupe-77",
+        name: "Text Sort & Deduplicate",
+        category: "Text",
+        icon: "🧹",
+        keywords: "sort lines remove duplicates text",
+        description: "Sort lines and remove repeated entries."
+      },
+      {
+        id: "date-format-78",
+        name: "Date Format Converter",
+        category: "Converters",
+        icon: "📅",
+        keywords: "date format convert yyyy mm dd",
+        description: "Convert dates between common formats."
+      },
+      {
+        id: "js-minifier-79",
+        name: "JavaScript Minifier",
+        category: "Developer",
+        icon: "💻",
+        keywords: "javascript minify code developer",
+        description: "Compact JavaScript code using a basic local minifier."
+      },
+      {
+        id: "tsv-csv-80",
+        name: "TSV to CSV Converter",
+        category: "Converters",
+        icon: "📊",
+        keywords: "tsv tab separated csv spreadsheet",
+        description: "Convert tab-separated data into CSV format."
+      }
+    ];
+
+    newTools.forEach(function (tool) {
+      if (document.querySelector('[data-ew-extra="' + tool.id + '"]')) return;
+
+      const card = node("article", {
+        className: "card",
+        "data-category": tool.category,
+        "data-keywords": (tool.name + " " + tool.keywords).toLowerCase(),
+        "data-ew-extra": tool.id
+      });
+
+      card.append(
+        node("div", {className:"card-icon"}, tool.icon),
+        node("h3", {}, tool.name),
+        node("p", {className:"card-description"}, tool.description),
+        node("span", {className:"tag"}, tool.category)
+      );
+
+      const openButton = node("button", {
+        type: "button",
+        className: "btn primary"
+      }, "Open Tool →");
+      card.appendChild(openButton);
+
+      const panel = node("section", {
+        id: "ew76-panel-" + tool.id,
+        className: "tool-panel ew75-panel",
+        "aria-label": tool.name
+      });
+
+      const close = node("button", {
+        type: "button",
+        className: "btn ew75-close"
+      }, "✕ Close");
+      close.addEventListener("click", function () {
+        panel.style.display = "none";
+      });
+
+      panel.append(
+        close,
+        node("h2", {}, tool.icon + " " + tool.name),
+        node("p", {className:"ew75-description"}, tool.description)
+      );
+
+      const p = node("div", {className:"ew75-content"});
+      panel.appendChild(p);
+      document.body.appendChild(panel);
+
+      openButton.addEventListener("click", function (event) {
+        event.stopPropagation();
+        document.querySelectorAll(".ew75-panel").forEach(function (item) {
+          item.style.display = "none";
+        });
+        panel.style.display = "block";
+        panel.scrollIntoView({behavior:"smooth", block:"start"});
+      });
+
+      grid.appendChild(card);
+
+      function field(label, control) {
+        makeField(p, label, control);
+        return control;
+      }
+
+      function buttons() {
+        return actionRow(p);
+      }
+
+      function setResult(message, error) {
+        showResult(p, message, error);
+      }
+
+      // 76. Text to Slug Converter
+      if (tool.id === "text-slug-76") {
+        const input = field("Enter title", textArea("ew76-slug-in", ""));
+        input.placeholder = "e.g. My Amazing Blog Post!";
+        const output = field("URL slug", textInput("ew76-slug-out", ""));
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+        addButton(row, "Convert to Slug", function () {
+          const slug = input.value.trim().toLowerCase()
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+          output.value = slug;
+          setResult(slug ? "Slug created!" : "Please enter some text.", !slug);
+        }, true);
+
+        addButton(row, "Copy Slug", async function () {
+          if (!output.value) return setResult("Create a slug first.", true);
+          try {
+            await navigator.clipboard.writeText(output.value);
+            setResult("Slug copied!");
+          } catch (_) {
+            output.select();
+            setResult("Press Ctrl+C to copy.");
+          }
+        });
+
+        showResult(p, "Enter a title to create a URL-friendly slug.");
+      }
+
+      // 77. Text Sort & Deduplicate
+      if (tool.id === "text-sort-dedupe-77") {
+        const input = field("Enter lines of text", textArea("ew77-sort-in", ""));
+        input.rows = 8;
+        const output = field("Result", textArea("ew77-sort-out", ""));
+        output.rows = 8;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+        addButton(row, "Sort & Remove Duplicates", function () {
+          const lines = [...new Set(input.value.split(/\r?\n/)
+            .map(s => s.trim()).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b, undefined, {sensitivity:"base"}));
+          output.value = lines.join("\n");
+          setResult("Processed " + lines.length + " unique lines.");
+        }, true);
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Enter lines to get started.");
+        });
+
+        showResult(p, "Each line will be sorted alphabetically and kept only once.");
+      }
+
+      // 78. Date Format Converter
+      if (tool.id === "date-format-78") {
+        const input = field("Enter date", textInput("ew78-date", ""));
+        input.placeholder = "YYYY-MM-DD, e.g. 2026-10-20";
+        const format = field("Output format", node("select", {id:"ew78-format"}));
+        [
+          ["yyyy-mm-dd", "YYYY-MM-DD"],
+          ["dd-mm-yyyy", "DD-MM-YYYY"],
+          ["mm-dd-yyyy", "MM-DD-YYYY"],
+          ["dd/mm/yyyy", "DD/MM/YYYY"],
+          ["mm/dd/yyyy", "MM/DD/YYYY"]
+        ].forEach(function (option) {
+          format.appendChild(node("option", {value:option[0]}, option[1]));
+        });
+
+        const output = field("Converted date", textInput("ew78-date-out", ""));
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+        addButton(row, "Convert Date", function () {
+          const match = input.value.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+          if (!match) {
+            output.value = "";
+            return setResult("Enter a valid date in YYYY-MM-DD format.", true);
+          }
+
+          const year = Number(match[1]);
+          const month = Number(match[2]);
+          const day = Number(match[3]);
+          const date = new Date(Date.UTC(year, month - 1, day));
+
+          if (date.getUTCFullYear() !== year ||
+              date.getUTCMonth() !== month - 1 ||
+              date.getUTCDate() !== day) {
+            output.value = "";
+            return setResult("That date does not exist.", true);
+          }
+
+          const dd = String(day).padStart(2, "0");
+          const mm = String(month).padStart(2, "0");
+          const yyyy = String(year).padStart(4, "0");
+          const values = {
+            "yyyy-mm-dd": yyyy + "-" + mm + "-" + dd,
+            "dd-mm-yyyy": dd + "-" + mm + "-" + yyyy,
+            "mm-dd-yyyy": mm + "-" + dd + "-" + yyyy,
+            "dd/mm/yyyy": dd + "/" + mm + "/" + yyyy,
+            "mm/dd/yyyy": mm + "/" + dd + "/" + yyyy
+          };
+
+          output.value = values[format.value];
+          setResult("Date converted successfully!");
+        }, true);
+
+        showResult(p, "Enter a date in YYYY-MM-DD format to convert it.");
+      }
+
+      // 79. JavaScript Minifier (basic whitespace compaction)
+      if (tool.id === "js-minifier-79") {
+        const input = field("JavaScript input", textArea("ew79-js-in", ""));
+        input.rows = 9;
+        input.placeholder = "Paste JavaScript code here...";
+        const output = field("Minified output", textArea("ew79-js-out", ""));
+        output.rows = 9;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+        addButton(row, "Minify Code", function () {
+          if (!input.value.trim()) {
+            return setResult("Paste JavaScript code first.", true);
+          }
+
+          // This safe basic mode trims each line without removing comments
+          // or changing string contents, so it avoids unsafe regex minification.
+          output.value = input.value.split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean)
+            .join("\n");
+
+          setResult("Basic whitespace cleanup complete. This is not full minification.");
+        }, true);
+
+        addButton(row, "Copy Output", async function () {
+          if (!output.value) return setResult("Minify some code first.", true);
+          try {
+            await navigator.clipboard.writeText(output.value);
+            setResult("Output copied!");
+          } catch (_) {
+            output.focus();
+            output.select();
+            setResult("Press Ctrl+C to copy.");
+          }
+        });
+
+        showResult(p, "Paste JavaScript to remove blank lines and surrounding whitespace.");
+      }
+
+      // 80. TSV to CSV Converter
+      if (tool.id === "tsv-csv-80") {
+        const input = field("TSV input", textArea("ew80-tsv-in", ""));
+        input.rows = 8;
+        input.placeholder = "Paste tab-separated data here...";
+        const output = field("CSV output", textArea("ew80-tsv-out", ""));
+        output.rows = 8;
+        output.readOnly = true;
+        output.classList.add("ew75-output");
+
+        const row = buttons();
+        addButton(row, "Convert to CSV", function () {
+          if (!input.value.trim()) {
+            return setResult("Paste TSV data first.", true);
+          }
+
+          function csvCell(value) {
+            return '"' + value.replace(/"/g, '""') + '"';
+          }
+
+          output.value = input.value.split(/\r?\n/)
+            .filter((line, index, all) => line.length > 0 || index < all.length - 1)
+            .map(line => line.split("\t").map(csvCell).join(","))
+            .join("\r\n");
+
+          setResult("Converted TSV data to CSV.");
+        }, true);
+
+        addButton(row, "Download CSV", function () {
+          if (!output.value) return setResult("Convert TSV data first.", true);
+          downloadText("emerald-world-converted.csv", "\uFEFF" + output.value, "text/csv;charset=utf-8");
+        });
+
+        addButton(row, "Clear", function () {
+          input.value = "";
+          output.value = "";
+          setResult("Paste TSV data to get started.");
+        });
+
+        showResult(p, "Paste tab-separated values, then convert to CSV.");
+      }
+    });
+  }
+
   const guard = node("span", {id:"ew5-tools-71-75-loaded"});
   guard.hidden = true;
   document.body.appendChild(guard);
